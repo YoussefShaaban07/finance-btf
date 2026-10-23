@@ -1,0 +1,12 @@
+{
+  "expo": {
+    "name": "Finance BFF",
+    "slug": "finance-bff",
+    "scheme": "financebff",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "automatic",
+    "plugins": ["expo-router"],
+    "experiments": { "typedRoutes": false }
+  }
+}

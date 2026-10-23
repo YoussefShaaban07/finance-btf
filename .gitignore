@@ -1,0 +1,20 @@
+# secrets
+.env
+*.env.local
+
+# python
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+*.db
+
+# node / expo
+node_modules/
+.expo/
+dist/
+web-build/
+*.tsbuildinfo
+
+# os
+.DS_Store
