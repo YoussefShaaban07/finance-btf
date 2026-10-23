@@ -4,6 +4,27 @@ An AI-powered personal finance dashboard: **spend smarter**. All your accounts, 
 
 Built for the FinTech Club Innovation Series. **All data is fake** (demo data or Plaid Sandbox). Educational only, not financial advice.
 
+## 🚀 Quick start: run it in your browser (nothing to install)
+
+[![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/YoussefShaaban07/finance-btf)
+
+1. **Sign in to GitHub**, then click the button above (or go to https://codespaces.new/YoussefShaaban07/finance-btf).
+2. Click **Create codespace**. Wait 1–2 minutes while it sets up and installs everything.
+3. In the **Terminal** panel at the bottom, type this and press Enter:
+   ```
+   streamlit run app.py
+   ```
+4. Click **Open in Browser** when the pop-up appears. (Missed it? Open the **Ports** tab and click the 🌐 globe next to port 8501.)
+5. When you're done: press **Ctrl+C** in the terminal, then stop the codespace at https://github.com/codespaces so it doesn't use your free hours.
+
+**Turn on the AI in Codespaces (one time):**
+1. On this repo: **Settings → Secrets and variables → Codespaces → New repository secret**.
+2. Name: `GEMINI_API_KEY`. Value: your key from https://aistudio.google.com/apikey. Click **Add secret**.
+3. Restart the codespace (github.com/codespaces → **⋯** → **Stop**, then open it again), and run `streamlit run app.py`.
+4. The sidebar should say **🟢 AI assistant: Gemini**.
+
+> Can't find Codespaces? The **`<> Code`** button (green, top right of the file list) has two tabs: **Local** and **Codespaces**. It doesn't appear in the GitHub mobile app, so use a browser.
+
 ## Features
 
 | | Feature | Club event |
@@ -19,7 +40,7 @@ Built for the FinTech Club Innovation Series. **All data is fake** (demo data or
 | 🔒 | Encrypted bank tokens, no secrets in code, prompt-injection defense, AI evals: see [SECURITY.md](SECURITY.md) | 4: Lock It Down |
 | 🎤 | 3-minute demo script: see [DEMO.md](DEMO.md) | 5: Demo Night |
 
-## Run it
+## Run it on your own computer
 
 ### Option A: your computer
 You need [Python 3.11+](https://www.python.org/downloads/) (on Windows, check **"Add python.exe to PATH"** in the installer) and [Git](https://git-scm.com/downloads).
@@ -57,7 +78,7 @@ Your browser opens at http://localhost:8501. It works right away with demo data.
 > **Troubleshooting:** `py is not recognized` → use `python` instead. `pip`/`streamlit is not recognized` → always use the `-m` form shown above. First run asks for an email → just press Enter.
 
 ### Option B: GitHub Codespaces (nothing to install)
-**Code → Codespaces → Create codespace on main**, wait for setup, then run `streamlit run app.py` and click **Open in Browser**.
+See **🚀 Quick start** at the top of this page.
 
 ### First change (Event 1, Task 5)
 Open `app.py`, find `# TEAM TODO`, and change `TEAM_NAME`. Save, and the page updates.
