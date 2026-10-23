@@ -30,5 +30,6 @@ def health():
         "ok": True,
         "demo_mode": s.demo_mode,
         "live_stocks": bool(s.finnhub_api_key),
-        "chat_enabled": bool(s.anthropic_api_key),
+        "chat_enabled": bool(s.ai_provider),
+        "ai_provider": s.ai_provider,
     }

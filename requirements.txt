@@ -1,0 +1,11 @@
+# Everything the dashboard needs:  pip install -r requirements.txt  then  streamlit run app.py
+streamlit>=1.40
+pandas>=2.2
+pydantic>=2.7
+pydantic-settings>=2.3
+sqlalchemy>=2.0
+httpx>=0.27
+cryptography>=42
+plaid-python>=25.0
+anthropic>=0.40
+google-genai>=1.0

@@ -1,10 +1,16 @@
 """Tools the chatbot can call. Each one reads the user's REAL data, so answers are grounded, not guessed."""
 import json
 from collections import Counter
+from typing import Callable
 
 from app.providers.base import FinanceProvider
 from app.services import market
+from app.services.alerts import card_alerts, unusual_charges
 from app.services.finance import compute_net_worth, spending_summary
+from app.services.subscriptions import find_subscriptions
+
+# Extra data the host app can plug in (savings goals live in our DB, not at the bank).
+GoalsFn = Callable[[], list[dict]]
 
 TOOL_SCHEMAS = [
     {
@@ -58,6 +64,21 @@ TOOL_SCHEMAS = [
         },
     },
     {
+        "name": "get_subscriptions",
+        "description": "Recurring monthly charges (subscriptions, rent, bills) found in the last 90 days, with yearly cost.",
+        "input_schema": {"type": "object", "properties": {}},
+    },
+    {
+        "name": "get_alerts",
+        "description": "Current alerts: unusual charges, card payments due soon, high credit utilization.",
+        "input_schema": {"type": "object", "properties": {}},
+    },
+    {
+        "name": "get_savings_goals",
+        "description": "User's savings goals: target, amount saved, % done, and how much per month is needed.",
+        "input_schema": {"type": "object", "properties": {}},
+    },
+    {
         "name": "get_market_news",
         "description": "Latest general market news headlines.",
         "input_schema": {"type": "object", "properties": {"limit": {"type": "integer", "minimum": 1, "maximum": 10}}},
@@ -65,7 +86,7 @@ TOOL_SCHEMAS = [
 ]
 
 
-def run_tool(name: str, args: dict, provider: FinanceProvider) -> str:
+def run_tool(name: str, args: dict, provider: FinanceProvider, goals_fn: GoalsFn | None = None) -> str:
     """Execute a tool and return JSON text for the model. Errors are returned, not raised, so the model can recover."""
     try:
         if name == "get_net_worth":
@@ -97,6 +118,17 @@ def run_tool(name: str, args: dict, provider: FinanceProvider) -> str:
             ]
         elif name == "get_stock_quote":
             result = market.get_quote(args["symbol"]).model_dump()
+        elif name == "get_subscriptions":
+            subs = find_subscriptions(provider.get_transactions(90))
+            result = {"monthly_total": round(sum(x.amount for x in subs), 2),
+                      "yearly_total": round(sum(x.yearly_cost for x in subs), 2),
+                      "subscriptions": [x.model_dump() for x in subs]}
+        elif name == "get_alerts":
+            alerts = unusual_charges(provider.get_transactions(30)) + card_alerts(provider.get_credit_cards())
+            result = [a.model_dump() for a in alerts] or {"message": "No alerts right now."}
+        elif name == "get_savings_goals":
+            goals = goals_fn() if goals_fn else None
+            result = goals or {"message": "The user hasn't set any savings goals yet."}
         elif name == "get_market_news":
             result = [n.model_dump() for n in market.get_news(int(args.get("limit", 5)))]
         else:

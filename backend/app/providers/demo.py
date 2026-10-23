@@ -15,7 +15,7 @@ ACCOUNTS = [
 ]
 
 CARD_DETAILS = {
-    "cc_1": {"apr": 24.99, "min": 35.00, "due_in_days": 9},
+    "cc_1": {"apr": 24.99, "min": 35.00, "due_in_days": 5},
     "cc_2": {"apr": 19.49, "min": 25.00, "due_in_days": 17},
 }
 
@@ -31,10 +31,18 @@ MERCHANTS = [
     ("Starbucks", "FOOD_AND_DRINK", 4, 9),
     ("Shell", "TRANSPORTATION", 30, 55),
     ("Amazon", "GENERAL_MERCHANDISE", 12, 90),
-    ("Spotify", "ENTERTAINMENT", 11.99, 11.99),
-    ("Netflix", "ENTERTAINMENT", 15.49, 15.49),
-    ("Entergy", "RENT_AND_UTILITIES", 70, 120),
-    ("Planet Fitness", "PERSONAL_CARE", 10, 10),
+    ("Target", "GENERAL_MERCHANDISE", 15, 60),
+    ("Uber", "TRANSPORTATION", 9, 24),
+]
+
+# (merchant, category, amount, day_of_month, account) — same charge every month, so it shows up as a subscription
+RECURRING = [
+    ("Pine Ridge Apartments", "RENT_AND_UTILITIES", 575.00, 1, "chk_1"),
+    ("Spotify", "ENTERTAINMENT", 11.99, 3, "cc_1"),
+    ("Netflix", "ENTERTAINMENT", 15.49, 12, "cc_1"),
+    ("Planet Fitness", "PERSONAL_CARE", 10.00, 17, "cc_2"),
+    ("Entergy", "RENT_AND_UTILITIES", 84.20, 20, "chk_1"),
+    ("ChatGPT Plus", "GENERAL_SERVICES", 20.00, 25, "cc_1"),
 ]
 
 
@@ -76,9 +84,17 @@ class DemoProvider(FinanceProvider):
             if day.day in (1, 15):
                 txns.append(Transaction(id=f"pay_{offset}", date=day, name="Payroll Deposit",
                                         amount=-1150.00, category="INCOME", account_id="chk_1"))
-            for _ in range(rng.randint(0, 3)):
+            for name, cat, amt, dom, acct in RECURRING:
+                if day.day == dom:
+                    txns.append(Transaction(id=f"sub_{name}_{offset}", date=day, name=name,
+                                            amount=amt, category=cat, account_id=acct))
+            for _ in range(rng.randint(0, 2)):
                 name, cat, lo, hi = rng.choice(MERCHANTS)
                 acct = rng.choice(["chk_1", "cc_1", "cc_2"])
                 txns.append(Transaction(id=f"tx_{offset}_{len(txns)}", date=day, name=name,
                                         amount=round(rng.uniform(lo, hi), 2), category=cat, account_id=acct))
+        # one planted oddball so the "unusual charge" alert has something to catch
+        if days > 2:
+            txns.append(Transaction(id="tx_unusual", date=today - timedelta(days=2), name="Amazon",
+                                    amount=486.99, category="GENERAL_MERCHANDISE", account_id="cc_1"))
         return sorted(txns, key=lambda t: t.date, reverse=True)

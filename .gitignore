@@ -18,3 +18,6 @@ web-build/
 
 # os
 .DS_Store
+
+# streamlit secrets
+.streamlit/secrets.toml
