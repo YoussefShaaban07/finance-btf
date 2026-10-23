@@ -26,8 +26,8 @@ You need [Python 3.11+](https://www.python.org/downloads/) (on Windows, check **
 
 **1. Get the code**
 ```
-git clone https://github.com/YoussefShaaban07/spendwise.git
-cd spendwise
+git clone https://github.com/YoussefShaaban07/finance-btf.git
+cd finance-btf
 ```
 
 **2. Install** (run one line at a time)
