@@ -1,6 +1,6 @@
-# 💸 Finance BFF
+# 💸 SpendWise
 
-An AI-powered personal finance dashboard: all your accounts, spending, cards, subscriptions, goals, and stocks in one place, plus **Penny**, an AI assistant that answers money questions using your actual numbers.
+An AI-powered personal finance dashboard: **spend smarter**. All your accounts, spending, cards, subscriptions, goals, and stocks in one place, plus **Penny**, an AI assistant that answers money questions using your actual numbers.
 
 Built for the FinTech Club Innovation Series. **All data is fake** (demo data or Plaid Sandbox). Educational only, not financial advice.
 
@@ -22,11 +22,39 @@ Built for the FinTech Club Innovation Series. **All data is fake** (demo data or
 ## Run it
 
 ### Option A: your computer
-```bash
-python -m pip install -r requirements.txt      # Mac: python3
-python -m streamlit run app.py
+You need [Python 3.11+](https://www.python.org/downloads/) (on Windows, check **"Add python.exe to PATH"** in the installer) and [Git](https://git-scm.com/downloads).
+
+**1. Get the code**
 ```
-Your browser opens at http://localhost:8501. It works right away with demo data.
+git clone https://github.com/YoussefShaaban07/spendwise.git
+cd spendwise
+```
+
+**2. Install** (run one line at a time)
+
+Windows (Command Prompt):
+```
+py -m pip install -r requirements.txt
+```
+Mac / Linux (Terminal):
+```
+python3 -m pip install -r requirements.txt
+```
+
+**3. Run**
+
+Windows:
+```
+py -m streamlit run app.py
+```
+Mac / Linux:
+```
+python3 -m streamlit run app.py
+```
+
+Your browser opens at http://localhost:8501. It works right away with demo data. Press **Ctrl+C** in the terminal to stop it.
+
+> **Troubleshooting:** `py is not recognized` → use `python` instead. `pip`/`streamlit is not recognized` → always use the `-m` form shown above. First run asks for an email → just press Enter.
 
 ### Option B: GitHub Codespaces (nothing to install)
 **Code → Codespaces → Create codespace on main**, wait for setup, then run `streamlit run app.py` and click **Open in Browser**.
@@ -36,7 +64,20 @@ Open `app.py`, find `# TEAM TODO`, and change `TEAM_NAME`. Save, and the page up
 
 ## Turn on the real stuff (all free)
 
-Copy `.streamlit/secrets.toml.example` → `.streamlit/secrets.toml` and fill in what you have. Restart the app after editing.
+Create your secrets file and open it:
+
+Windows:
+```
+copy .streamlit\secrets.toml.example .streamlit\secrets.toml
+notepad .streamlit\secrets.toml
+```
+Mac / Linux:
+```
+cp .streamlit/secrets.toml.example .streamlit/secrets.toml
+open -e .streamlit/secrets.toml
+```
+Paste each key **between the quotes**, e.g. `GEMINI_API_KEY = "AIza..."`. Save, then **stop the app (Ctrl+C) and start it again**. It only reads keys at startup. The sidebar shows 🟢 for everything that's connected.
+
 In Codespaces, add them as **Codespaces secrets** instead (repo Settings → Secrets and variables → Codespaces).
 
 | Key | Where | Unlocks |
@@ -44,7 +85,7 @@ In Codespaces, add them as **Codespaces secrets** instead (repo Settings → Sec
 | `GEMINI_API_KEY` | [aistudio.google.com/apikey](https://aistudio.google.com/apikey) (**free tier**) | The AI assistant |
 | `ANTHROPIC_API_KEY` | [console.anthropic.com](https://console.anthropic.com) (paid) | AI assistant, alternative to Gemini (used first if both are set) |
 | `PLAID_CLIENT_ID`, `PLAID_SECRET` | [dashboard.plaid.com](https://dashboard.plaid.com) → Developers → Keys (**Sandbox** secret) | Connect sandbox bank button |
-| `TOKEN_ENCRYPTION_KEY` | run `python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"` | Required with Plaid |
+| `TOKEN_ENCRYPTION_KEY` | run `py -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"` (Mac: `python3 -c ...`) and paste the output | Required with Plaid |
 | `FINNHUB_API_KEY` | [finnhub.io](https://finnhub.io) | Live stock prices |
 
 ⚠️ **Never commit `secrets.toml` or paste keys into code.** It's already in `.gitignore`.
@@ -54,7 +95,7 @@ Penny gets **tools**, not a pile of data in her prompt. For "Can I afford a $1,2
 
 Tools: `get_net_worth`, `get_accounts`, `get_credit_cards`, `get_spending_summary`, `get_recent_transactions`, `get_holdings`, `get_subscriptions`, `get_alerts`, `get_savings_goals`, `get_stock_quote`, `get_market_news`.
 
-Her rules are in `backend/app/ai/chat.py`. Works with **Gemini or Claude**: same tools, same rules. **Test her** with `python evals/run_evals.py` (needs an AI key). It runs 9 graded cases, including refusing to move money and ignoring a prompt-injection attack hidden in a merchant name.
+Her rules are in `backend/app/ai/chat.py`. Works with **Gemini or Claude**: same tools, same rules. **Test her** with `py evals/run_evals.py` (Mac: `python3 ...`) (needs an AI key). It runs 9 graded cases, including refusing to move money and ignoring a prompt-injection attack hidden in a merchant name.
 
 ## Project layout
 ```

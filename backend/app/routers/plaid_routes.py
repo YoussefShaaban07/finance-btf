@@ -33,7 +33,7 @@ def create_link_token(user_id: str = Depends(current_user)):
 
     req = LinkTokenCreateRequest(
         user=LinkTokenCreateRequestUser(client_user_id=user_id),
-        client_name="Finance BFF",
+        client_name="SpendWise",
         products=[Products("transactions")],
         additional_consented_products=[Products("liabilities"), Products("investments")],
         country_codes=[CountryCode("US")],

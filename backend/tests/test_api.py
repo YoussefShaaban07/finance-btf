@@ -215,3 +215,28 @@ def test_chat_gemini_tool_loop():
     assert resp.tools_used == ["get_net_worth"]
     assert str(compute_net_worth(DemoProvider().get_accounts()).net_worth) in resp.reply
     assert [c.role for c in calls[1]] == ["user", "model", "user"]
+
+
+def test_gemini_retries_then_falls_back():
+    """503 on the first model -> retries -> next model answers. Bad key -> readable error, no retries."""
+    from types import SimpleNamespace as NS
+    from google.genai import errors
+    from app.ai.chat import AIError, _gemini_generate
+
+    tried = []
+
+    def gen(model, contents, config):
+        tried.append(model)
+        if model == "busy-model":
+            raise errors.ServerError(503, {"error": {"code": 503, "message": "The model is overloaded.", "status": "UNAVAILABLE"}})
+        return NS(ok=True)
+
+    resp, models = _gemini_generate(NS(models=NS(generate_content=gen)), ["busy-model", "good-model"], [], None,
+                                    sleep=lambda s: None)
+    assert resp.ok and models == ["good-model"] and tried == ["busy-model"] * 3 + ["good-model"]
+
+    def bad_key(model, contents, config):
+        raise errors.ClientError(400, {"error": {"code": 400, "message": "API key not valid.", "status": "INVALID_ARGUMENT"}})
+
+    with pytest.raises(AIError, match="API key"):
+        _gemini_generate(NS(models=NS(generate_content=bad_key)), ["m1", "m2"], [], None, sleep=lambda s: None)

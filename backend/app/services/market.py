@@ -36,7 +36,7 @@ def get_news(limit: int = 10) -> list[NewsItem]:
     key = get_settings().finnhub_api_key
     if not key:
         return [NewsItem(headline="Demo mode: add FINNHUB_API_KEY for live market news",
-                         source="Finance BFF", url="https://finnhub.io")]
+                         source="SpendWise", url="https://finnhub.io")]
     r = httpx.get(f"{FINNHUB}/news", params={"category": "general", "token": key}, timeout=10)
     r.raise_for_status()
     return [NewsItem(headline=n["headline"], source=n.get("source", ""), url=n.get("url", ""),

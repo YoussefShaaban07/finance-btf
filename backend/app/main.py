@@ -14,7 +14,7 @@ async def lifespan(_: FastAPI):
     yield
 
 
-app = FastAPI(title="Finance BFF API", version="0.1.0", lifespan=lifespan)
+app = FastAPI(title="SpendWise API", version="0.1.0", lifespan=lifespan)
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
 
 app.include_router(plaid_routes.router)

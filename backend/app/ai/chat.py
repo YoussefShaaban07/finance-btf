@@ -93,6 +93,56 @@ def _chat_anthropic(client, model, system, msgs, provider, goals_fn) -> ChatResp
     return ChatResponse(reply=TOO_MANY_STEPS, tools_used=tools_used)
 
 
+GEMINI_FALLBACK_MODELS = ["gemini-3.6-flash", "gemini-3.5-flash-lite", "gemini-flash-latest"]
+RETRY_DELAYS = [1.5, 4.0]  # seconds between retries when Google says the model is busy
+
+
+class AIError(Exception):
+    """A readable error for the UI."""
+
+
+def _gemini_generate(client, models: list[str], contents, config, sleep=None):
+    """Call Gemini, riding out busy servers. Retries 5xx/429 with backoff, then tries the next model.
+    Returns (response, models) where models starts with the one that worked, so later rounds reuse it."""
+    import time
+
+    from google.genai import errors
+
+    sleep = sleep or time.sleep
+    last = None
+    for i, m in enumerate(models):
+        for attempt in range(len(RETRY_DELAYS) + 1):
+            try:
+                return client.models.generate_content(model=m, contents=contents, config=config), models[i:]
+            except errors.ServerError as e:  # 500/503: overloaded or hiccup
+                last = e
+            except errors.ClientError as e:
+                last = e
+                if e.code == 429:  # rate limited: wait and retry
+                    pass
+                elif e.code == 404:  # model doesn't exist for this key: try the next one
+                    break
+                else:  # 400/401/403: bad key or request; retrying won't help
+                    raise AIError(_explain(e)) from e
+            if attempt < len(RETRY_DELAYS):
+                sleep(RETRY_DELAYS[attempt])
+    raise AIError(_explain(last)) from last
+
+
+def _explain(e) -> str:
+    code = getattr(e, "code", None)
+    msg = (getattr(e, "message", None) or str(e))[:200]
+    if code in (500, 503):
+        return f"Google's AI servers are busy right now ({code}: {msg}). Wait a minute and try again."
+    if code == 429:
+        return f"Hit the free-tier rate limit ({msg}). Wait a minute and try again."
+    if code in (401, 403) or "API key" in msg:
+        return f"Gemini rejected the API key ({code}: {msg}). Double-check GEMINI_API_KEY in secrets.toml."
+    if code == 404:
+        return f"None of the Gemini models were available for this key ({msg}). Set GEMINI_MODEL in secrets.toml."
+    return f"Gemini error {code}: {msg}"
+
+
 def _chat_gemini(client, model, system, msgs, provider, goals_fn) -> ChatResponse:
     from google.genai import types
 
@@ -107,9 +157,10 @@ def _chat_gemini(client, model, system, msgs, provider, goals_fn) -> ChatRespons
     )
     contents = [types.Content(role="model" if m.role == "assistant" else "user",
                               parts=[types.Part.from_text(text=m.content)]) for m in msgs]
+    models = list(dict.fromkeys([model, *GEMINI_FALLBACK_MODELS]))  # preferred first, no duplicates
     tools_used: list[str] = []
     for _ in range(MAX_TOOL_ROUNDS):
-        resp = client.models.generate_content(model=model, contents=contents, config=config)
+        resp, models = _gemini_generate(client, models, contents, config)
         calls = resp.function_calls or []
         if not calls:
             return ChatResponse(reply=(resp.text or "").strip(), tools_used=tools_used)

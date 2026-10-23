@@ -1,4 +1,4 @@
-"""Finance BFF: AI-powered personal finance dashboard.
+"""SpendWise: AI-powered personal finance dashboard.
 
 Run:  streamlit run app.py
 Works with zero keys (demo data). Add keys in .streamlit/secrets.toml to connect a Plaid
@@ -13,7 +13,7 @@ from dashboard.setup import load_secrets
 
 load_secrets()  # must run before importing the backend, which reads keys on import
 
-from app.ai.chat import MAX_MESSAGE_CHARS, chat  # noqa: E402
+from app.ai.chat import MAX_MESSAGE_CHARS, AIError, chat  # noqa: E402
 from app.config import get_settings  # noqa: E402
 from app.db import SessionLocal, init_db  # noqa: E402
 from app.schemas import ChatMessage  # noqa: E402
@@ -27,8 +27,8 @@ from dashboard import theme  # noqa: E402
 from dashboard.data import Snapshot, load  # noqa: E402
 
 # TEAM TODO: change this to your team name
-TEAM_NAME = "Finance BFF"
-TAGLINE = "Your whole financial life in one place, plus an AI you can ask."
+TEAM_NAME = "SpendWise"
+TAGLINE = "Spend smarter. See all your money in one place, and ask AI anything about it."
 
 # TODO(auth): one shared demo user for now. Add real login before any real person uses this.
 USER_ID = "demo-user"
@@ -306,17 +306,23 @@ with tabs[6]:
     if question:
         ss.chat.append({"role": "user", "content": question})
         st.chat_message("user").markdown(question)
+        failed = True  # error replies are shown but never sent back to the AI as history
         if not settings.ai_provider:
             reply = ("I'm not connected yet. Get a free key at https://aistudio.google.com/apikey, add "
                      "`GEMINI_API_KEY = \"...\"` to `.streamlit/secrets.toml`, then restart the app.")
         else:
             with st.chat_message("assistant"), st.spinner("Checking your accounts…"):
                 try:
-                    r = chat([ChatMessage(**m) for m in ss.chat[-20:]], snap,
+                    history = [ChatMessage(role=m["role"], content=m["content"])
+                               for m in ss.chat[-20:] if not m.get("error")]  # don't feed error notes back to the AI
+                    r = chat(history, snap,
                              goals_fn=lambda: [g.model_dump(mode="json") for g in goal_progress()])
                     reply = r.reply + (f"\n\n<sub>🔧 looked up: {', '.join(dict.fromkeys(r.tools_used))}</sub>"
                                        if r.tools_used else "")
+                    failed = False
+                except AIError as e:
+                    reply, failed = f"⚠️ {e}", True
                 except Exception as e:  # noqa: BLE001
-                    reply = f"Sorry, something went wrong talking to the AI: {type(e).__name__}"
-        ss.chat.append({"role": "assistant", "content": reply})
+                    reply, failed = f"⚠️ Something went wrong talking to the AI: {type(e).__name__}: {str(e)[:200]}", True
+        ss.chat.append({"role": "assistant", "content": reply, "error": failed})
         st.rerun()
