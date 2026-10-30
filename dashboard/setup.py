@@ -1,7 +1,10 @@
-"""Load keys (from .streamlit/secrets.toml or env vars) BEFORE the backend reads its settings.
+"""Load keys BEFORE the backend reads its settings.
 
-Ground rule: no secrets in code. Keys live in .streamlit/secrets.toml (gitignored) locally,
-or in GitHub Codespaces secrets, which show up as environment variables.
+Ground rule: no secrets in code. Keys can come from any of these (first one wins):
+  1. environment variables (GitHub Codespaces secrets show up this way)
+  2. .streamlit/secrets.toml
+  3. .env in the project folder (the FinTech Club Event 2 kit's format)
+Both files are gitignored.
 """
 import logging
 import os
@@ -14,7 +17,7 @@ KEYS = ["PLAID_CLIENT_ID", "PLAID_SECRET", "PLAID_ENV", "FINNHUB_API_KEY", "ANTH
         "ANTHROPIC_MODEL", "GEMINI_API_KEY", "GEMINI_MODEL", "TOKEN_ENCRYPTION_KEY", "DATABASE_URL"]
 
 
-def load_secrets() -> None:
+def _load_streamlit_secrets() -> None:
     import streamlit as st
 
     try:
@@ -22,7 +25,20 @@ def load_secrets() -> None:
             if k in st.secrets and st.secrets[k] and not os.environ.get(k):
                 os.environ[k] = str(st.secrets[k])
     except Exception:  # no secrets file is fine: the app runs on sample data
-        log.debug("No .streamlit/secrets.toml found; using environment variables only")
+        log.debug("No .streamlit/secrets.toml found")
+
+
+def _load_dotenv() -> None:
+    try:
+        from dotenv import load_dotenv
+    except ImportError:
+        return
+    load_dotenv(ROOT / ".env", override=False)  # never overrides values already set above
+
+
+def load_secrets() -> None:
+    _load_streamlit_secrets()
+    _load_dotenv()
     os.environ.setdefault("DATABASE_URL", f"sqlite:///{ROOT / 'finance.db'}")
     backend = str(ROOT / "backend")
     if backend not in sys.path:

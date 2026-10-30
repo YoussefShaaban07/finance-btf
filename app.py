@@ -21,7 +21,7 @@ from dashboard import state, theme  # noqa: E402
 from dashboard.context import DashboardContext  # noqa: E402
 from dashboard.data import Snapshot, load  # noqa: E402
 from dashboard.format import money  # noqa: E402
-from dashboard.views import assistant, goals, overview, sidebar, stocks  # noqa: E402
+from dashboard.views import assistant, bank_feed, goals, overview, sidebar, stocks  # noqa: E402
 from dashboard.views.money_tabs import render_alerts, render_cards, render_subscriptions  # noqa: E402
 
 # TEAM TODO: change this to your team name
@@ -65,9 +65,9 @@ theme.hero(
 
 # ----------------------------------------------------------------------------------------- tabs
 alerts_label = f"Alerts ({len(ctx.alerts)})" if ctx.alerts else "Alerts"
-tabs = st.tabs(["Overview", alerts_label, "Cards", "Subscriptions", "Goals", "Stocks", "Ask AI"])
+tabs = st.tabs(["Overview", alerts_label, "Cards", "Subscriptions", "Goals", "Stocks", "Bank feed", "Ask AI"])
 views = [overview.render, render_alerts, render_cards, render_subscriptions, goals.render, stocks.render,
-         assistant.render]
+         bank_feed.render, assistant.render]
 for tab, view in zip(tabs, views, strict=True):
     with tab:
         view(ctx)
