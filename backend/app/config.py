@@ -21,10 +21,18 @@ class Settings(BaseSettings):
     token_encryption_key: str = ""
     database_url: str = "sqlite:///./finance.db"
 
+    # Comma-separated origins allowed to call the REST API. "*" is fine for local dev with the Expo app;
+    # set real origins before deploying anywhere public.
+    cors_origins: str = "*"
+
     @property
     def demo_mode(self) -> bool:
         """No Plaid keys -> serve fake-but-realistic data so the app works out of the box."""
         return not (self.plaid_client_id and self.plaid_secret)
+
+    @property
+    def cors_origin_list(self) -> list[str]:
+        return [o.strip() for o in self.cors_origins.split(",") if o.strip()]
 
     @property
     def ai_provider(self) -> str | None:

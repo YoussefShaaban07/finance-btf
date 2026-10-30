@@ -1,14 +1,17 @@
 """Fetch everything once, cache it, and expose it through the same provider interface the AI tools use."""
+import logging
+from collections.abc import Callable
 from datetime import date, timedelta
 
 import streamlit as st
 
-from app.db import SessionLocal
+from app.db import session_scope
 from app.providers import get_provider
 from app.providers.base import FinanceProvider
 from app.schemas import Account, CreditCard, Holding, Transaction
 
 HISTORY_DAYS = 90
+log = logging.getLogger(__name__)
 
 
 class Snapshot(FinanceProvider):
@@ -34,17 +37,20 @@ class Snapshot(FinanceProvider):
 
 @st.cache_data(ttl=300, show_spinner="Loading your accounts…")
 def load(user_id: str, version: int) -> dict:  # `version` busts the cache after connect/refresh
-    db = SessionLocal()
-    try:
+    with session_scope() as db:
         p = get_provider(db, user_id)
-    finally:
-        db.close()
-    out = {"is_demo": p.is_demo, "errors": []}
-    for key, fn in [("accounts", p.get_accounts), ("cards", p.get_credit_cards),
-                    ("holdings", p.get_holdings), ("txns", lambda: p.get_transactions(HISTORY_DAYS))]:
+    out: dict = {"is_demo": p.is_demo, "errors": []}
+    fetchers: list[tuple[str, Callable[[], list]]] = [
+        ("accounts", p.get_accounts),
+        ("cards", p.get_credit_cards),
+        ("holdings", p.get_holdings),
+        ("txns", lambda: p.get_transactions(HISTORY_DAYS)),
+    ]
+    for key, fetch in fetchers:
         try:
-            out[key] = fn()
-        except Exception as e:  # noqa: BLE001 — show what failed instead of crashing the whole page
+            out[key] = fetch()
+        except Exception as e:  # show what failed instead of crashing the whole page
+            log.exception("Failed to load %s for %s", key, user_id)
             out[key] = []
             out["errors"].append(f"{key}: {type(e).__name__}: {str(e)[:200]}")
     return out

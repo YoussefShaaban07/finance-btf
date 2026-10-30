@@ -1,5 +1,7 @@
 # 💸 SpendWise
 
+[![CI](https://github.com/YoussefShaaban07/finance-btf/actions/workflows/ci.yml/badge.svg)](https://github.com/YoussefShaaban07/finance-btf/actions/workflows/ci.yml)
+
 An AI-powered personal finance dashboard: **spend smarter**. All your accounts, spending, cards, subscriptions, goals, and stocks in one place, plus **Penny**, an AI assistant that answers money questions using your actual numbers.
 
 Built for the FinTech Club Innovation Series. **All data is fake** (demo data or Plaid Sandbox). Educational only, not financial advice.
@@ -152,17 +154,30 @@ Her rules are in `backend/app/ai/chat.py`. Works with **Gemini or Claude**: same
 
 ## Project layout
 ```
-app.py                 ← the dashboard (start here)
-dashboard/             ← loading keys + cached data for the dashboard
+app.py                 ← entry point: wires the sidebar, header and tabs together (start here)
+dashboard/
+  data.py              ← fetches and caches account data
+  context.py           ← computes every number the screen and the AI share (net worth, alerts, goals…)
+  views/               ← one module per tab: overview, alerts/cards/subscriptions, goals, stocks, assistant
+  theme.py             ← design tokens, CSS and HTML components (all data text is HTML-escaped)
 backend/app/
   providers/           ← DemoProvider | PlaidProvider (same interface)
   services/            ← net worth, spending, alerts, subscriptions, goals, market data, Plaid linking
-  ai/                  ← assistant rules + tools + tool-use loop
+  ai/                  ← assistant rules, tool registry, tool-use loop
   main.py              ← optional REST API (FastAPI) for the mobile app
-backend/tests/         ← 16 unit tests:  cd backend && pytest
+backend/tests/, tests/ ← unit tests
 evals/                 ← AI assistant evals
 mobile/                ← optional Expo phone app (talks to the REST API)
 ```
+
+## Tests and code quality
+From the project folder, with your virtual environment active:
+```
+py -m pip install -r backend/requirements.txt ruff
+py -m pytest
+py -m ruff check .
+```
+(Mac / Linux: `python3 -m ...`.) GitHub Actions runs the same lint and tests on Python 3.11 to 3.13 for every push and pull request. The AI evals call a real model, so they only run when you trigger them by hand: **Actions → CI → Run workflow → Also run the AI assistant evals** (needs a `GEMINI_API_KEY` repository secret under Settings → Secrets and variables → Actions).
 
 ## Optional extras
 - **REST API:** `cd backend && pip install -r requirements.txt && uvicorn app.main:app --reload`, then open http://localhost:8000/docs

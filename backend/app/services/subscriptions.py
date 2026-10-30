@@ -1,6 +1,7 @@
 """Find recurring charges (subscriptions, rent, bills) from transaction history."""
 from collections import defaultdict
 from datetime import timedelta
+from itertools import pairwise
 
 from pydantic import BaseModel
 
@@ -33,7 +34,7 @@ def find_subscriptions(txns: list[Transaction], tolerance: float = 0.05) -> list
         same_price = [c for c in charges if abs(c.amount - typical) <= tolerance * typical]
         if len(same_price) < 2:
             continue
-        gaps = [(b.date - a.date).days for a, b in zip(same_price, same_price[1:])]
+        gaps = [(b.date - a.date).days for a, b in pairwise(same_price)]
         if not all(25 <= g <= 35 for g in gaps):
             continue
         last = same_price[-1]

@@ -1,3 +1,4 @@
+import logging
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
@@ -14,8 +15,11 @@ async def lifespan(_: FastAPI):
     yield
 
 
+logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
+
 app = FastAPI(title="SpendWise API", version="0.1.0", lifespan=lifespan)
-app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
+app.add_middleware(CORSMiddleware, allow_origins=get_settings().cors_origin_list, allow_methods=["*"],
+                   allow_headers=["*"])
 
 app.include_router(plaid_routes.router)
 app.include_router(finance_routes.router)
@@ -24,7 +28,7 @@ app.include_router(chat_routes.router)
 
 
 @app.get("/health")
-def health():
+def health() -> dict:
     s = get_settings()
     return {
         "ok": True,

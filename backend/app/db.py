@@ -1,7 +1,9 @@
-from datetime import date, datetime, timezone
+from collections.abc import Iterator
+from contextlib import contextmanager
+from datetime import UTC, date, datetime
 
 from sqlalchemy import Date, DateTime, Float, Integer, String, Text, create_engine
-from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, sessionmaker
+from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column, sessionmaker
 
 from app.config import get_settings
 
@@ -16,7 +18,7 @@ class Base(DeclarativeBase):
 
 
 def utcnow() -> datetime:
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 class PlaidItem(Base):
@@ -55,9 +57,20 @@ def init_db() -> None:
     Base.metadata.create_all(engine)
 
 
-def get_db():
+@contextmanager
+def session_scope() -> Iterator[Session]:
+    """`with session_scope() as db:` opens a session and always closes it. Rolls back if the block raises."""
     db = SessionLocal()
     try:
         yield db
+    except Exception:
+        db.rollback()
+        raise
     finally:
         db.close()
+
+
+def get_db() -> Iterator[Session]:
+    """FastAPI dependency: one session per request."""
+    with session_scope() as db:
+        yield db

@@ -1,0 +1,37 @@
+[project]
+name = "spendwise"
+version = "0.2.0"
+description = "AI personal-finance dashboard with a tool-using assistant, Plaid Sandbox, and prompt-injection evals."
+authors = [{ name = "Youssef Shaaban" }]
+requires-python = ">=3.11"
+
+# ------------------------------------------------------------------ lint: `ruff check .`
+[tool.ruff]
+line-length = 150  # matches the existing dense style (demo data tables, tool schemas)
+target-version = "py311"
+extend-exclude = ["mobile"]
+
+[tool.ruff.lint]
+select = [
+  "E", "W",   # pycodestyle
+  "F",        # pyflakes: unused imports/variables, undefined names
+  "I",        # import sorting
+  "B",        # bugbear: likely bugs
+  "UP",       # modern syntax for the target Python
+  "S110",     # no silent `except: pass`
+  "RUF",      # ruff-specific checks
+]
+ignore = ["RUF001", "RUF002", "RUF003"]  # allow typographic characters (−, …, ’) in UI strings
+
+[tool.ruff.lint.flake8-bugbear]
+# FastAPI's dependency-injection markers are meant to be called in default arguments.
+extend-immutable-calls = ["fastapi.Depends", "fastapi.Query", "fastapi.Header", "fastapi.Body"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["app", "dashboard"]
+
+# ------------------------------------------------------------------ tests: `pytest`
+[tool.pytest.ini_options]
+testpaths = ["backend/tests", "tests"]
+pythonpath = ["backend", "."]
+addopts = "-q --import-mode=importlib"  # importlib: the root app.py must not shadow the backend `app` package

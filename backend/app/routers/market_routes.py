@@ -4,6 +4,7 @@ from app.schemas import NewsItem, Quote
 from app.services import market
 
 router = APIRouter(prefix="/market", tags=["market"])
+MAX_QUOTES = 20
 
 
 @router.get("/quote/{symbol}", response_model=Quote)
@@ -16,7 +17,8 @@ def quote(symbol: str):
 
 @router.get("/quotes", response_model=list[Quote])
 def quotes(symbols: str = Query(..., description="Comma-separated, e.g. AAPL,NVDA,VTI")):
-    return [market.get_quote(s) for s in symbols.split(",") if s.strip()][:20]
+    wanted = [s.strip() for s in symbols.split(",") if s.strip()][:MAX_QUOTES]  # cap before calling Finnhub
+    return [market.get_quote(s) for s in wanted]
 
 
 @router.get("/news", response_model=list[NewsItem])

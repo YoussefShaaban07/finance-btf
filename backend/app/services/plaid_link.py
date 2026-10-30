@@ -1,10 +1,13 @@
 """Link / unlink banks. Shared by the API routes and the Streamlit dashboard."""
+import logging
+
 from sqlalchemy.orm import Session
 
 from app.config import get_settings
 from app.crypto import decrypt, encrypt
 from app.db import PlaidItem
 
+log = logging.getLogger(__name__)
 SANDBOX_INSTITUTION = ("ins_109508", "First Platypus Bank (Sandbox)")
 
 
@@ -58,8 +61,8 @@ def unlink_all(db: Session, user_id: str) -> int:
     for item in items:
         try:
             client.item_remove(ItemRemoveRequest(access_token=decrypt(item.access_token_enc)))
-        except Exception:  # noqa: BLE001 — still delete locally even if Plaid already forgot it
-            pass
+        except Exception:  # still delete locally even if Plaid already forgot the item
+            log.warning("Plaid item_remove failed for %s; deleting local copy anyway", item.item_id, exc_info=True)
         db.delete(item)
     db.commit()
     return len(items)

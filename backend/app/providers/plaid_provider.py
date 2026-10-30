@@ -1,5 +1,8 @@
 """Real data via Plaid. Works with the free Sandbox (fake banks) out of the box."""
+import logging
+from collections.abc import Callable
 from datetime import date, timedelta
+from typing import Any
 
 import plaid
 from plaid.api import plaid_api
@@ -10,8 +13,11 @@ from plaid.model.transactions_sync_request import TransactionsSyncRequest
 
 from app.config import get_settings
 from app.crypto import decrypt
+from app.db import PlaidItem
 from app.providers.base import FinanceProvider
 from app.schemas import Account, CreditCard, Holding, Transaction
+
+log = logging.getLogger(__name__)
 
 _ENVS = {
     "sandbox": plaid.Environment.Sandbox,
@@ -28,19 +34,23 @@ def plaid_client() -> plaid_api.PlaidApi:
     return plaid_api.PlaidApi(plaid.ApiClient(config))
 
 
-def _call_optional(fn):
-    """Some institutions don't support every product (e.g. no investments). Skip those quietly."""
+OPTIONAL_PRODUCT_ERRORS = ("PRODUCTS_NOT_SUPPORTED", "NO_INVESTMENT_ACCOUNTS", "NO_LIABILITY_ACCOUNTS",
+                           "PRODUCT_NOT_READY")
+
+
+def _call_optional(fn: Callable[..., Any], *args: Any) -> dict | None:
+    """Some institutions don't support every product (e.g. no investments). Return None for those."""
     try:
-        return fn()
+        return fn(*args).to_dict()
     except plaid.ApiException as e:
-        if any(code in str(e.body) for code in ("PRODUCTS_NOT_SUPPORTED", "NO_INVESTMENT_ACCOUNTS",
-                                                "NO_LIABILITY_ACCOUNTS", "PRODUCT_NOT_READY")):
+        if any(code in str(e.body) for code in OPTIONAL_PRODUCT_ERRORS):
+            log.info("Skipping unsupported Plaid product: %s", getattr(fn, "__name__", fn))
             return None
         raise
 
 
 class PlaidProvider(FinanceProvider):
-    def __init__(self, items):
+    def __init__(self, items: list[PlaidItem]):
         self.client = plaid_client()
         self.items = [(i.institution_name, decrypt(i.access_token_enc)) for i in items]
 
@@ -62,32 +72,38 @@ class PlaidProvider(FinanceProvider):
         return out
 
     def get_credit_cards(self) -> list[CreditCard]:
-        accounts = {a.id: a for a in self.get_accounts() if a.type == "credit"}
-        cards = []
+        # Collect liability details from every linked bank first, then build each card exactly once.
+        # (Building inside the per-bank loop let one bank's empty details overwrite another bank's card.)
+        details: dict[str, dict] = {}
         for _, token in self.items:
-            resp = _call_optional(lambda: self.client.liabilities_get(LiabilitiesGetRequest(access_token=token)).to_dict())
-            details = {c["account_id"]: c for c in (resp or {}).get("liabilities", {}).get("credit") or []}
-            for acct_id, a in accounts.items():
-                d = details.get(acct_id, {})
-                purchase_apr = next((x["apr_percentage"] for x in d.get("aprs", []) if x.get("apr_type") == "purchase_apr"), None)
-                cards.append(CreditCard(
-                    account_id=acct_id,
-                    name=a.name,
-                    balance=a.balance,
-                    limit=a.limit,
-                    utilization_pct=round(a.balance / a.limit * 100, 1) if a.limit else None,
-                    apr=purchase_apr,
-                    minimum_payment=d.get("minimum_payment_amount"),
-                    next_due_date=d.get("next_payment_due_date"),
-                ))
-        # an account can only belong to one item, so dedupe by id
-        return list({c.account_id: c for c in cards}.values())
+            resp = _call_optional(self.client.liabilities_get, LiabilitiesGetRequest(access_token=token))
+            for c in (resp or {}).get("liabilities", {}).get("credit") or []:
+                details[c["account_id"]] = c
+
+        cards = []
+        for a in self.get_accounts():
+            if a.type != "credit":
+                continue
+            d = details.get(a.id, {})
+            purchase_apr = next((x["apr_percentage"] for x in d.get("aprs", []) if x.get("apr_type") == "purchase_apr"),
+                                None)
+            cards.append(CreditCard(
+                account_id=a.id,
+                name=a.name,
+                balance=a.balance,
+                limit=a.limit,
+                utilization_pct=round(a.balance / a.limit * 100, 1) if a.limit else None,
+                apr=purchase_apr,
+                minimum_payment=d.get("minimum_payment_amount"),
+                next_due_date=d.get("next_payment_due_date"),
+            ))
+        return cards
 
     def get_holdings(self) -> list[Holding]:
         out = []
         for _, token in self.items:
-            resp = _call_optional(lambda: self.client.investments_holdings_get(
-                InvestmentsHoldingsGetRequest(access_token=token)).to_dict())
+            resp = _call_optional(self.client.investments_holdings_get,
+                                  InvestmentsHoldingsGetRequest(access_token=token))
             if not resp:
                 continue
             secs = {s["security_id"]: s for s in resp["securities"]}

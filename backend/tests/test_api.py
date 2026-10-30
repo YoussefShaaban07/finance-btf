@@ -1,19 +1,13 @@
-import os
 from types import SimpleNamespace
 
-os.environ.setdefault("DATABASE_URL", "sqlite:///./test.db")
-os.environ["PLAID_CLIENT_ID"] = ""
-os.environ["PLAID_SECRET"] = ""
-os.environ["FINNHUB_API_KEY"] = ""
+import pytest
+from fastapi.testclient import TestClient
 
-import pytest  # noqa: E402
-from fastapi.testclient import TestClient  # noqa: E402
-
-from app.ai.chat import chat  # noqa: E402
-from app.main import app  # noqa: E402
-from app.providers.demo import DemoProvider  # noqa: E402
-from app.schemas import Account, ChatMessage, Transaction  # noqa: E402
-from app.services.finance import compute_net_worth, spending_summary  # noqa: E402
+from app.ai.chat import chat
+from app.main import app
+from app.providers.demo import DemoProvider
+from app.schemas import Account, ChatMessage, Transaction
+from app.services.finance import compute_net_worth, spending_summary
 
 
 @pytest.fixture(scope="module")
@@ -122,6 +116,7 @@ def test_finds_subscriptions():
 
 def test_goal_progress_math():
     from datetime import date, timedelta
+
     from app.db import SavingsGoal
     from app.services.goals import progress
     g = SavingsGoal(id=1, name="Laptop", target=1200, target_date=date.today() + timedelta(days=62))
@@ -132,6 +127,7 @@ def test_goal_progress_math():
 
 def test_goal_validation():
     from datetime import date
+
     from app.db import SessionLocal
     from app.services.goals import add_goal
     db = SessionLocal()
@@ -142,6 +138,7 @@ def test_goal_validation():
 
 def test_new_tools_return_data():
     import json
+
     from app.ai.tools import run_tool
     p = DemoProvider()
     assert json.loads(run_tool("get_subscriptions", {}, p))["monthly_total"] > 0
@@ -161,6 +158,7 @@ def test_assistant_rules_in_prompt():
 def test_plaid_provider_normalizes(monkeypatch):
     from datetime import date
     from types import SimpleNamespace as NS
+
     import app.providers.plaid_provider as pp
 
     resp = lambda d: NS(to_dict=lambda: d)  # noqa: E731
@@ -197,6 +195,7 @@ def test_plaid_provider_normalizes(monkeypatch):
 def test_chat_gemini_tool_loop():
     """Same tool loop on Gemini, using the real SDK types with a fake client."""
     from types import SimpleNamespace as NS
+
     from google.genai import types
 
     calls = []
@@ -220,7 +219,9 @@ def test_chat_gemini_tool_loop():
 def test_gemini_retries_then_falls_back():
     """503 on the first model -> retries -> next model answers. Bad key -> readable error, no retries."""
     from types import SimpleNamespace as NS
+
     from google.genai import errors
+
     from app.ai.chat import AIError, _gemini_generate
 
     tried = []
