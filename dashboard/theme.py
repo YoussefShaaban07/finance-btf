@@ -1,179 +1,197 @@
-"""Colors, CSS, and colorful HTML components for the dashboard.
+"""Visual system for the dashboard: tokens, global CSS, and small HTML components.
 
-Every piece of text that comes from data (merchant names, goal names, alerts) is passed through
-html.escape before it goes into HTML, so a sneaky merchant name can't inject markup (Event 4!).
+Design idea: a banknote and a bank statement. Light paper, dark green ink, tabular figures so money lines
+up, and one signature element (the guilloche pattern behind the net-worth hero, like the engraved lines on a
+banknote). Everything else stays quiet.
+
+Security: every string that comes from data (merchant names, account names, alerts) goes through
+html.escape before it is placed in HTML, so a hostile merchant name can't inject markup.
 """
+from __future__ import annotations
+
+import math
+from collections.abc import Callable, Iterable, Sequence
+from dataclasses import dataclass
+from datetime import date
 from html import escape
+from typing import TYPE_CHECKING
+from urllib.parse import quote
 
 import altair as alt
 import pandas as pd
 import streamlit as st
 
-VIOLET, PINK, ORANGE, AMBER = "#8B5CF6", "#EC4899", "#FB923C", "#FBBF24"
-GREEN, CYAN, BLUE, RED = "#34D399", "#22D3EE", "#60A5FA", "#F87171"
+if TYPE_CHECKING:
+    from app.schemas import Account, CreditCard
+    from app.services.alerts import Alert
+    from app.services.subscriptions import Subscription
 
-CATEGORY_COLORS = {
-    "GENERAL_MERCHANDISE": PINK, "RENT_AND_UTILITIES": VIOLET, "FOOD_AND_DRINK": ORANGE,
-    "TRANSPORTATION": CYAN, "ENTERTAINMENT": AMBER, "GENERAL_SERVICES": BLUE, "PERSONAL_CARE": GREEN,
-    "TRAVEL": "#A78BFA", "MEDICAL": RED, "LOAN_PAYMENTS": "#94A3B8", "INCOME": GREEN,
-}
-FALLBACK = [VIOLET, PINK, CYAN, ORANGE, GREEN, AMBER, BLUE, RED]
-CATEGORY_ICONS = {
-    "GENERAL_MERCHANDISE": "🛍️", "RENT_AND_UTILITIES": "🏠", "FOOD_AND_DRINK": "🍔", "TRANSPORTATION": "🚗",
-    "ENTERTAINMENT": "🎬", "GENERAL_SERVICES": "🧾", "PERSONAL_CARE": "💪", "TRAVEL": "✈️", "MEDICAL": "🩺",
-    "INCOME": "💰",
-}
-CARD_GRADIENTS = [
-    ("#7C3AED", "#2563EB"),  # violet → blue
-    ("#DB2777", "#F97316"),  # pink → orange
-    ("#0891B2", "#10B981"),  # cyan → green
-    ("#9333EA", "#EC4899"),  # purple → pink
-]
+Formatter = Callable[[float], str]
+
+# ---------------------------------------------------------------------------------------------- tokens
+PAPER = "#F3F6F4"     # page background: cool mint-grey, like note paper
+SURFACE = "#FFFFFF"   # panels
+INK = "#10241C"       # body text: green-black ink
+MUTED = "#5B6E66"     # secondary text
+RULE = "#D9E2DD"      # hairlines and borders
+NOTE = "#1F5E46"      # primary: banknote green
+NOTE_SOFT = "#E3EEE8"
+GAIN = "#1F7A4D"      # money in / good
+LOSS = "#A3333D"      # money out / bad
+BRASS = "#9A7425"     # needs attention
+
+FONT = "Schibsted Grotesk"
+FONT_STACK = f"{FONT}, system-ui, -apple-system, Segoe UI, sans-serif"
+
+# Card faces: flat ink tones, no gradients. Cycled by index.
+CARD_FACES = ["#1F3B32", "#3A3550", "#4A3B2A", "#26404F"]
+
+# Category bars use tints of one hue, ordered by size, so the chart reads as one quantity, not a rainbow.
+CATEGORY_SHADES = ["#1F5E46", "#2F7258", "#45876C", "#5F9B82", "#7DB09A", "#9DC4B2", "#BDD8CB"]
 
 
-def cat_color(cat: str, i: int = 0) -> str:
-    return CATEGORY_COLORS.get(cat, FALLBACK[i % len(FALLBACK)])
+@dataclass(frozen=True)
+class Tone:
+    """Semantic color for a status (used by alerts, utilization, cash flow)."""
+    fg: str
+    bg: str
 
 
-def cat_icon(cat: str) -> str:
-    return CATEGORY_ICONS.get(cat, "💳")
+GOOD = Tone(GAIN, "#E4F1EA")
+WARN = Tone(BRASS, "#F6EFDF")
+BAD = Tone(LOSS, "#F6E4E6")
+NEUTRAL = Tone(MUTED, "#ECF0EE")
+PLAIN = Tone(INK, SURFACE)  # ordinary amounts
 
 
+# ---------------------------------------------------------------------------------------------- guilloche
+def _guilloche_svg(width: int = 720, height: int = 220, strands: int = 14) -> str:
+    """Interleaved sine strands, the engraved security pattern on banknotes. Built once at import."""
+    paths = []
+    for k in range(strands):
+        phase = k * math.pi / strands
+        pts = []
+        for x in range(0, width + 1, 6):
+            t = x / width * 4 * math.pi
+            y = height / 2 + (height * 0.36) * math.sin(t + phase) * math.cos(t / 2.3 - phase / 2)
+            pts.append(f"{x},{y:.1f}")
+        paths.append(f'<polyline points="{" ".join(pts)}"/>')
+    svg = (f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {width} {height}" preserveAspectRatio="none">'
+           f'<g fill="none" stroke="{NOTE}" stroke-width="0.7" opacity="0.2">{"".join(paths)}</g></svg>')
+    # st.html strips inline <svg>, so the pattern ships as a CSS background image instead.
+    return "data:image/svg+xml;utf8," + quote(svg)
+
+
+GUILLOCHE_URL = _guilloche_svg()
+
+# ---------------------------------------------------------------------------------------------- css
 CSS = f"""
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:wght@400;500;600;700;800&display=swap');
 
-html, body, .stApp, .stMarkdown, button, input, textarea, select {{ font-family: 'Plus Jakarta Sans', sans-serif !important; }}
-.stApp {{
-  background:
-    radial-gradient(1100px 520px at 0% -10%, rgba(139,92,246,.28), transparent 60%),
-    radial-gradient(900px 480px at 100% 0%, rgba(236,72,153,.20), transparent 60%),
-    radial-gradient(800px 500px at 50% 110%, rgba(34,211,238,.12), transparent 60%),
-    #0B1020;
+html, body, .stApp, .stMarkdown, button, input, textarea, select, [data-testid="stSidebar"] {{
+  font-family: '{FONT}', system-ui, sans-serif !important;
 }}
-[data-testid="stSidebar"] {{
-  background: linear-gradient(180deg, #1C1147 0%, #111733 60%, #0B1020 100%);
-  border-right: 1px solid rgba(139,92,246,.35);
-}}
+.stApp {{ background: {PAPER}; color: {INK}; }}
 [data-testid="stHeader"] {{ background: transparent; }}
+[data-testid="stSidebar"] {{ background: {SURFACE}; border-right: 1px solid {RULE}; }}
+.block-container {{ padding-top: 2.2rem; max-width: 1180px; }}
 
-/* headings get a gradient */
-[data-testid="stHeading"] h2, [data-testid="stHeading"] h3 {{
-  background: linear-gradient(90deg, {CYAN}, {VIOLET} 50%, {PINK});
-  -webkit-background-clip: text; background-clip: text; color: transparent !important; font-weight: 800;
+h1, h2, h3, [data-testid="stHeading"] h2, [data-testid="stHeading"] h3 {{
+  color: {INK}; font-weight: 700; letter-spacing: -0.01em;
 }}
+[data-testid="stHeading"] h3 {{ font-size: 1.15rem; margin-top: .4rem; }}
 
-/* pill tabs */
-.stTabs [role="tablist"] {{ gap: 8px; flex-wrap: wrap; border-bottom: none; }}
-.stTabs [role="tab"] {{
-  background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.08);
-  border-radius: 999px; padding: 8px 16px; height: auto; transition: all .15s ease;
-}}
-.stTabs [role="tab"]:hover {{ border-color: {VIOLET}; }}
-.stTabs [role="tab"][aria-selected="true"] {{
-  background: linear-gradient(90deg, {VIOLET}, {PINK}); border-color: transparent; color: #fff !important;
-  box-shadow: 0 6px 20px rgba(236,72,153,.35);
-}}
-.stTabs [data-baseweb="tab-highlight"], .stTabs [data-baseweb="tab-border"],
-.stTabs [role="tablist"] + div:empty {{ display: none; }}
-.stTabs [role="tab"] p {{ font-weight: 600; }}
+/* numbers line up in columns everywhere */
+.stApp {{ font-variant-numeric: tabular-nums; }}
+
+/* tabs: a plain underline, the selected tab in note green */
+.stTabs [role="tablist"] {{ gap: 22px; border-bottom: 1px solid {RULE}; }}
+.stTabs [role="tab"] {{ padding: 10px 0; height: auto; background: none; }}
+.stTabs [role="tab"] p {{ font-weight: 600; font-size: .95rem; color: {MUTED}; }}
+.stTabs [role="tab"][aria-selected="true"] p {{ color: {NOTE}; }}
+.stTabs [data-baseweb="tab-highlight"] {{ background: {NOTE}; height: 2px; }}
 
 /* buttons */
+.stButton button, [data-testid="stFormSubmitButton"] button {{ border-radius: 8px; font-weight: 600; }}
 .stButton button[kind="primary"], [data-testid="stFormSubmitButton"] button {{
-  background: linear-gradient(90deg, {VIOLET}, {PINK}); border: none; color: #fff; font-weight: 700;
-  box-shadow: 0 6px 18px rgba(139,92,246,.35);
+  background: {NOTE}; border: 1px solid {NOTE}; color: #fff;
 }}
-.stButton button[kind="secondary"] {{
-  border: 1px solid rgba(139,92,246,.45); background: rgba(139,92,246,.08);
+.stButton button[kind="primary"]:hover, [data-testid="stFormSubmitButton"] button:hover {{
+  background: #174A37; border-color: #174A37; color: #fff;
 }}
-.stButton button[kind="secondary"]:hover {{ border-color: {PINK}; color: {PINK}; }}
+.stButton button[kind="secondary"] {{ background: {SURFACE}; border: 1px solid {RULE}; color: {INK}; }}
+.stButton button[kind="secondary"]:hover {{ border-color: {NOTE}; color: {NOTE}; }}
+button:focus-visible, [role="tab"]:focus-visible {{ outline: 2px solid {NOTE}; outline-offset: 2px; }}
 
-/* progress bars: rainbow fill */
-[data-testid="stProgress"] [role="progressbar"] > div > div > div {{
-  background: linear-gradient(90deg, {CYAN}, {VIOLET}, {PINK}) !important;
-}}
+[data-testid="stProgress"] [role="progressbar"] > div > div > div {{ background: {NOTE} !important; }}
+[data-testid="stMetric"] {{ background: {SURFACE}; border: 1px solid {RULE}; border-radius: 10px; padding: 12px 16px; }}
+[data-testid="stDataFrame"] {{ border: 1px solid {RULE}; border-radius: 10px; overflow: hidden; }}
+[data-testid="stVerticalBlockBorderWrapper"] {{ border-radius: 10px; }}
+[data-testid="stChatMessage"] {{ background: {SURFACE}; border: 1px solid {RULE}; border-radius: 12px; }}
 
-/* leftover st.metric boxes */
-[data-testid="stMetric"] {{
-  background: linear-gradient(160deg, rgba(139,92,246,.16), rgba(236,72,153,.08));
-  border: 1px solid rgba(139,92,246,.35); border-radius: 16px; padding: 14px 18px;
-}}
-[data-testid="stVerticalBlockBorderWrapper"] {{ border-radius: 18px; }}
-[data-testid="stDataFrame"] {{ border-radius: 14px; overflow: hidden; border: 1px solid rgba(139,92,246,.25); }}
-[data-testid="stChatMessage"] {{
-  background: rgba(255,255,255,.04); border: 1px solid rgba(139,92,246,.22); border-radius: 18px;
-}}
-[data-testid="stChatInput"] textarea {{ border-radius: 14px; }}
-
-/* ---------- custom components ---------- */
+/* ---------- hero: net worth over a guilloche band ---------- */
 .hero {{
-  background: linear-gradient(120deg, #7C3AED 0%, #DB2777 55%, #F97316 100%);
-  border-radius: 26px; padding: 28px 32px; color: #fff; position: relative; overflow: hidden;
-  display: flex; justify-content: space-between; align-items: center; gap: 24px; flex-wrap: wrap;
-  box-shadow: 0 20px 50px rgba(219,39,119,.30);
+  position: relative; overflow: hidden; background: {SURFACE}; border: 1px solid {RULE}; border-radius: 14px;
+  padding: 26px 30px; display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 32px;
 }}
-.hero::after {{
-  content: ""; position: absolute; right: -60px; top: -60px; width: 240px; height: 240px; border-radius: 50%;
-  background: rgba(255,255,255,.12);
+.hero {{ background-image: url("{GUILLOCHE_URL}"); background-size: max(100%, 720px) 230px;
+  background-position: left 62%; background-repeat: no-repeat; }}
+.hero .brand {{ font-weight: 700; color: {NOTE}; font-size: 1rem; }}
+.hero .tagline {{ color: {MUTED}; font-size: .92rem; margin-top: 2px; max-width: 46ch; }}
+.hero .nw-label {{ margin-top: 26px; color: {MUTED}; font-size: .95rem; }}
+.hero .nw {{ font-size: clamp(2.6rem, 6vw, 4.2rem); font-weight: 800; letter-spacing: -0.03em; line-height: 1.02;
+  color: {INK}; }}
+.hero .source {{ margin-top: 12px; display: inline-block; font-size: .8rem; color: {MUTED};
+  border: 1px solid {RULE}; background: {PAPER}; border-radius: 6px; padding: 3px 9px; }}
+
+/* statement: label ..... amount */
+.ledger {{ align-self: end; background: rgba(255,255,255,.88); border-radius: 10px; padding: 6px 4px; }}
+.ledger .row {{ display: grid; grid-template-columns: auto 1fr auto; align-items: baseline; column-gap: 8px;
+  padding: 9px 12px; }}
+.ledger .row + .row {{ border-top: 1px solid {RULE}; }}
+.ledger .lbl {{ color: {INK}; font-weight: 500; white-space: nowrap; }}
+.ledger .lead {{ flex: 1; border-bottom: 1px dotted #A9B8B1; transform: translateY(-4px); min-width: 12px; }}
+.ledger .amt {{ font-weight: 700; white-space: nowrap; }}
+.ledger .note {{ grid-column: 1 / -1; color: {MUTED}; font-size: .78rem; text-align: right; }}
+
+@media (max-width: 760px) {{
+  .hero {{ grid-template-columns: 1fr; gap: 14px; padding: 22px 18px; }}
 }}
-.hero h1 {{ font-size: 2.3rem; font-weight: 800; margin: 0; color: #fff; padding: 0; line-height: 1.1; }}
-.hero p {{ margin: 6px 0 0; opacity: .9; }}
-.hero .chip {{ display: inline-block; margin-top: 12px; padding: 4px 12px; border-radius: 999px;
-  background: rgba(0,0,0,.22); font-size: .78rem; font-weight: 600; }}
-.hero .nw {{ text-align: right; z-index: 1; }}
-.hero .nw .label {{ font-size: .8rem; text-transform: uppercase; letter-spacing: .12em; opacity: .85; font-weight: 700; }}
-.hero .nw .value {{ font-size: 2.8rem; font-weight: 800; line-height: 1.1; }}
 
-.stat-grid {{ display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 14px; margin: 18px 0 8px; }}
-.stat {{
-  background: #131A33; border-radius: 18px; padding: 16px 18px; position: relative; overflow: hidden;
-  border: 1px solid rgba(255,255,255,.06);
-}}
-.stat::before {{ content: ""; position: absolute; inset: 0 0 auto 0; height: 4px; background: var(--c); }}
-.stat::after {{ content: ""; position: absolute; right: -30px; bottom: -30px; width: 110px; height: 110px;
-  border-radius: 50%; background: var(--c); opacity: .13; }}
-.stat .icon {{ font-size: 1.4rem; }}
-.stat .label {{ color: #A9B1D6; font-size: .78rem; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; margin-top: 4px; }}
-.stat .value {{ color: #fff; font-size: 1.6rem; font-weight: 800; }}
-.stat .sub {{ color: var(--c); font-size: .82rem; font-weight: 700; }}
+/* ---------- lists ---------- */
+.panel {{ background: {SURFACE}; border: 1px solid {RULE}; border-radius: 12px; overflow: hidden; }}
+.item {{ display: flex; align-items: center; gap: 12px; padding: 12px 16px; }}
+.item + .item {{ border-top: 1px solid {RULE}; }}
+.item .main {{ min-width: 0; }}
+.item .name {{ font-weight: 600; color: {INK}; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }}
+.item .sub {{ color: {MUTED}; font-size: .84rem; }}
+.item .amt {{ margin-left: auto; font-weight: 700; white-space: nowrap; }}
+.item .tag {{ font-size: .75rem; font-weight: 600; border-radius: 5px; padding: 2px 7px; white-space: nowrap; }}
 
-.alert-card {{
-  border-radius: 16px; padding: 14px 16px; margin-bottom: 10px; display: flex; gap: 12px; align-items: flex-start;
-  background: linear-gradient(90deg, color-mix(in srgb, var(--c) 22%, transparent), rgba(255,255,255,.02));
-  border: 1px solid color-mix(in srgb, var(--c) 55%, transparent);
-}}
-.alert-card .icon {{ font-size: 1.4rem; }}
-.alert-card .t {{ font-weight: 800; color: #fff; }}
-.alert-card .d {{ color: #D5D9EE; font-size: .9rem; }}
+/* alerts: a colored rule on the left says how serious */
+.alert {{ border-left: 3px solid var(--fg); background: var(--bg); border-radius: 8px; padding: 12px 14px;
+  margin-bottom: 8px; }}
+.alert .t {{ font-weight: 650; color: {INK}; }}
+.alert .d {{ color: {MUTED}; font-size: .9rem; margin-top: 2px; }}
 
-.acct {{ display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: 14px;
-  background: rgba(255,255,255,.035); margin-bottom: 8px; border-left: 4px solid var(--c); }}
-.acct .icon {{ font-size: 1.3rem; }}
-.acct .name {{ font-weight: 700; color: #fff; }}
-.acct .kind {{ color: #A9B1D6; font-size: .78rem; }}
-.acct .amt {{ margin-left: auto; font-weight: 800; color: var(--c); }}
+/* ---------- credit card ---------- */
+.cc {{ border-radius: 14px; padding: 18px 20px; color: #F2F5F3; min-height: 178px; margin-bottom: 14px;
+  display: flex; flex-direction: column; gap: 6px; }}
+.cc .top {{ display: flex; justify-content: space-between; gap: 10px; font-weight: 600; font-size: .92rem; }}
+.cc .top span:last-child {{ opacity: .7; font-weight: 500; }}
+.cc .bal {{ font-size: 1.7rem; font-weight: 800; margin-top: 10px; letter-spacing: -0.02em; }}
+.cc .of {{ font-size: .84rem; opacity: .78; }}
+.cc .bar {{ height: 4px; border-radius: 4px; background: rgba(255,255,255,.2); margin: 8px 0 6px; overflow: hidden; }}
+.cc .bar > div {{ height: 100%; background: var(--util); }}
+.cc .meta {{ display: flex; gap: 14px; flex-wrap: wrap; font-size: .8rem; opacity: .85; margin-top: auto; }}
 
-.cc {{
-  border-radius: 22px; padding: 20px 22px; color: #fff; min-height: 190px; position: relative; overflow: hidden;
-  box-shadow: 0 14px 34px rgba(0,0,0,.35); margin-bottom: 14px;
-}}
-.cc::after {{ content: ""; position: absolute; right: -40px; top: -40px; width: 170px; height: 170px;
-  border-radius: 50%; background: rgba(255,255,255,.14); }}
-.cc .top {{ display: flex; justify-content: space-between; font-weight: 700; z-index: 1; position: relative; }}
-.cc .chipimg {{ width: 38px; height: 28px; border-radius: 6px; margin: 14px 0 8px;
-  background: linear-gradient(135deg, #FDE68A, #F59E0B); }}
-.cc .bal {{ font-size: 1.8rem; font-weight: 800; }}
-.cc .of {{ opacity: .85; font-size: .85rem; }}
-.cc .bar {{ height: 8px; border-radius: 99px; background: rgba(255,255,255,.25); margin: 10px 0 8px; overflow: hidden; }}
-.cc .bar > div {{ height: 100%; border-radius: 99px; background: #fff; }}
-.cc .meta {{ display: flex; gap: 14px; flex-wrap: wrap; font-size: .82rem; opacity: .95; }}
+/* small summary figures (cards / subscriptions tabs) */
+.figures {{ display: flex; gap: 34px; flex-wrap: wrap; margin: 6px 0 18px; }}
+.figure .v {{ font-size: 1.6rem; font-weight: 800; color: {INK}; letter-spacing: -0.02em; }}
+.figure .l {{ color: {MUTED}; font-size: .86rem; }}
 
-.sub-grid {{ display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 12px; }}
-.sub-card {{ border-radius: 18px; padding: 16px; background: #131A33; border: 1px solid rgba(255,255,255,.06);
-  border-top: 4px solid var(--c); }}
-.sub-card .m {{ font-weight: 800; color: #fff; }}
-.sub-card .p {{ font-size: 1.5rem; font-weight: 800; color: var(--c); }}
-.sub-card .y {{ color: #A9B1D6; font-size: .82rem; }}
+@media (prefers-reduced-motion: reduce) {{ * {{ transition: none !important; animation: none !important; }} }}
 </style>
 """
 
@@ -182,121 +200,139 @@ def inject_css() -> None:
     st.html(CSS)
 
 
-def hero(title: str, tagline: str, net_worth: str, chip: str) -> None:
+# ---------------------------------------------------------------------------------------------- components
+@dataclass(frozen=True)
+class LedgerRow:
+    label: str
+    amount: str
+    tone: Tone = NEUTRAL
+    note: str = ""
+
+
+def hero(brand: str, tagline: str, net_worth: str, source: str, rows: Sequence[LedgerRow]) -> None:
+    ledger = "".join(
+        f'<div class="row"><span class="lbl">{escape(r.label)}</span><span class="lead"></span>'
+        f'<span class="amt" style="color:{r.tone.fg}">{escape(r.amount)}</span>'
+        + (f'<span class="note">{escape(r.note)}</span>' if r.note else "")
+        + "</div>"
+        for r in rows)
     st.html(f"""
-    <div class="hero">
-      <div style="z-index:1">
-        <h1>💸 {escape(title)}</h1>
-        <p>{escape(tagline)}</p>
-        <span class="chip">{escape(chip)}</span>
+    <section class="hero" aria-label="Net worth summary">
+      <div>
+        <div class="brand">{escape(brand)}</div>
+        <div class="tagline">{escape(tagline)}</div>
+        <div class="nw-label">Net worth</div>
+        <div class="nw">{escape(net_worth)}</div>
+        <span class="source">{escape(source)}</span>
       </div>
-      <div class="nw"><div class="label">Net worth</div><div class="value">{escape(net_worth)}</div></div>
-    </div>""")
+      <div class="ledger">{ledger}</div>
+    </section>""")
 
 
-def stat_cards(items: list[tuple[str, str, str, str, str]]) -> None:
-    """items: (icon, label, value, sub, color)"""
-    cards = "".join(
-        f'<div class="stat" style="--c:{c}"><div class="icon">{i}</div><div class="label">{escape(lbl)}</div>'
-        f'<div class="value">{escape(v)}</div><div class="sub">{escape(s)}</div></div>'
-        for i, lbl, v, s, c in items)
-    st.html(f'<div class="stat-grid">{cards}</div>')
+def figures(items: Iterable[tuple[str, str]]) -> None:
+    """A row of big numbers with a plain label underneath: [(value, label), ...]."""
+    body = "".join(f'<div class="figure"><div class="v">{escape(v)}</div><div class="l">{escape(lbl)}</div></div>'
+                   for v, lbl in items)
+    st.html(f'<div class="figures">{body}</div>')
 
 
-def alert_cards(alerts) -> None:
+def alert_list(alerts: Sequence[Alert]) -> None:
     if not alerts:
-        st.html(f'<div class="alert-card" style="--c:{GREEN}"><div class="icon">✅</div>'
-                '<div><div class="t">All clear</div><div class="d">Nothing unusual right now.</div></div></div>')
+        st.html(f'<div class="alert" style="--fg:{GOOD.fg};--bg:{GOOD.bg}"><div class="t">Nothing needs your attention'
+                '</div><div class="d">No unusual charges, upcoming due dates, or high utilization.</div></div>')
         return
     out = []
     for a in alerts:
-        warn = a.level == "warning"
-        icon = "🚨" if "Unusual" in a.title else ("📅" if "due" in a.title else "💡")
-        out.append(f'<div class="alert-card" style="--c:{ORANGE if warn else CYAN}"><div class="icon">{icon}</div>'
-                   f'<div><div class="t">{escape(a.title)}</div><div class="d">{escape(a.detail)}</div></div></div>')
+        tone = WARN if a.level == "warning" else NEUTRAL
+        out.append(f'<div class="alert" style="--fg:{tone.fg};--bg:{tone.bg}">'
+                   f'<div class="t">{escape(a.title)}</div><div class="d">{escape(a.detail)}</div></div>')
     st.html("".join(out))
 
 
-ACCOUNT_STYLE = {"depository": ("🏦", GREEN), "investment": ("📈", CYAN), "credit": ("💳", PINK), "loan": ("🚗", ORANGE)}
+LIABILITY_TYPES = ("credit", "loan")
 
 
-def account_list(accounts, money) -> None:
+def account_list(accounts: Sequence[Account], money: Formatter) -> None:
     rows = []
     for a in accounts:
-        icon, color = ACCOUNT_STYLE.get(a.type, ("💼", VIOLET))
-        amt = -a.balance if a.type in ("credit", "loan") else a.balance
-        rows.append(f'<div class="acct" style="--c:{color}"><div class="icon">{icon}</div><div>'
-                    f'<div class="name">{escape(a.name)}</div><div class="kind">{escape(a.institution)} · '
-                    f'{escape((a.subtype or a.type).title())}</div></div><div class="amt">{escape(money(amt))}</div></div>')
-    st.html("".join(rows))
+        owed = a.type in LIABILITY_TYPES
+        amt = -a.balance if owed else a.balance
+        kind = (a.subtype or a.type).replace("_", " ").capitalize()
+        rows.append(f'<div class="item"><div class="main"><div class="name">{escape(a.name)}</div>'
+                    f'<div class="sub">{escape(a.institution)}, {escape(kind)}</div></div>'
+                    f'<div class="amt" style="color:{LOSS if owed else INK}">{escape(money(amt))}</div></div>')
+    st.html(f'<div class="panel">{"".join(rows)}</div>')
 
 
-def credit_card(c, idx: int, money) -> None:
-    g1, g2 = CARD_GRADIENTS[idx % len(CARD_GRADIENTS)]
+def short_date(d: date) -> str:
+    """Nov 4. Built by hand because strftime's %-d doesn't work on Windows."""
+    return f"{d:%b} {d.day}"
+
+
+def utilization_tone(pct: float) -> Tone:
+    return GOOD if pct < 10 else WARN if pct < 30 else BAD
+
+
+def credit_card(c: CreditCard, idx: int, money: Formatter) -> None:
+    face = CARD_FACES[idx % len(CARD_FACES)]
     pct = c.utilization_pct or 0
-    health = "🟢 great" if pct < 10 else "🟡 okay" if pct < 30 else "🔴 high"
+    util_color = {GOOD: "#8FD3AE", WARN: "#E6C677", BAD: "#EF9AA2"}[utilization_tone(pct)]
     meta = []
     if c.apr is not None:
         meta.append(f"APR {c.apr:.2f}%")
-        meta.append(f"~{money(c.balance * c.apr / 100 / 12)}/mo interest")
+        meta.append(f"about {money(c.balance * c.apr / 100 / 12)} interest a month")
     if c.minimum_payment is not None:
-        meta.append(f"Min {money(c.minimum_payment)}")
+        meta.append(f"Minimum {money(c.minimum_payment)}")
     if c.next_due_date:
-        meta.append(f"Due {c.next_due_date:%b %d}")
+        meta.append(f"Due {short_date(c.next_due_date)}")
     st.html(f"""
-    <div class="cc" style="background: linear-gradient(135deg, {g1}, {g2})">
-      <div class="top"><span>{escape(c.name)}</span><span>💳 Credit</span></div>
-      <div class="chipimg"></div>
+    <div class="cc" style="background:{face};--util:{util_color}">
+      <div class="top"><span>{escape(c.name)}</span><span>Credit</span></div>
       <div class="bal">{escape(money(c.balance))}</div>
-      <div class="of">of {escape(money(c.limit or 0))} limit · {pct:.1f}% used {health}</div>
-      <div class="bar"><div style="width:{min(pct, 100):.1f}%"></div></div>
+      <div class="of">{pct:.1f}% of {escape(money(c.limit or 0))} limit</div>
+      <div class="bar" role="img" aria-label="{pct:.0f}% utilization"><div style="width:{min(pct, 100):.1f}%"></div></div>
       <div class="meta">{''.join(f'<span>{escape(m)}</span>' for m in meta)}</div>
     </div>""")
 
 
-def subscription_cards(subs, money, pretty) -> None:
-    cards = []
-    for i, s in enumerate(subs):
-        c = cat_color(s.category, i)
-        cards.append(f'<div class="sub-card" style="--c:{c}"><div class="m">{cat_icon(s.category)} {escape(s.merchant)}</div>'
-                     f'<div class="p">{escape(money(s.amount))}<span style="font-size:.85rem;color:#A9B1D6">/mo</span></div>'
-                     f'<div class="y">{escape(money(s.yearly_cost))}/yr · next {escape(s.next_expected)}</div></div>')
-    st.html(f'<div class="sub-grid">{"".join(cards)}</div>')
+def subscription_list(subs: Sequence[Subscription], money: Formatter, pretty: Callable[[str], str]) -> None:
+    rows = []
+    for s in subs:
+        rows.append(f'<div class="item"><div class="main"><div class="name">{escape(s.merchant)}</div>'
+                    f'<div class="sub">{escape(pretty(s.category))}, next charge '
+                    f'{escape(short_date(date.fromisoformat(s.next_expected)))}</div></div>'
+                    f'<div class="amt">{escape(money(s.amount))}<span class="sub"> a month</span></div></div>')
+    st.html(f'<div class="panel">{"".join(rows)}</div>')
 
 
+# ---------------------------------------------------------------------------------------------- charts
 def _style(chart: alt.Chart) -> alt.Chart:
     return (chart.properties(background="transparent")
             .configure_view(stroke=None)
-            .configure_axis(labelColor="#C7CCE6", titleColor="#C7CCE6", gridColor="rgba(255,255,255,.07)",
-                            domain=False, tickColor="transparent", labelFontSize=12, labelLimit=220,
-                            labelFont="Plus Jakarta Sans, Helvetica, Arial, sans-serif"))
+            .configure_axis(labelColor=MUTED, titleColor=MUTED, gridColor=RULE, domain=False, tickColor="transparent",
+                            labelFontSize=12, labelLimit=220, labelFont=FONT_STACK)
+            .configure_text(font=FONT_STACK))
 
 
-def category_chart(by_category: dict, pretty) -> None:
-    cats = list(by_category)
-    df = pd.DataFrame({"Category": [f"{cat_icon(c)} {pretty(c)}" for c in cats], "Spent": list(by_category.values())})
-    colors = [cat_color(c, i) for i, c in enumerate(cats)]
-    chart = alt.Chart(df).mark_bar(cornerRadiusEnd=8, height=22).encode(
+def category_chart(by_category: dict[str, float], pretty: Callable[[str], str]) -> None:
+    df = pd.DataFrame({"Category": [pretty(c) for c in by_category], "Spent": list(by_category.values())})
+    shades = [CATEGORY_SHADES[min(i, len(CATEGORY_SHADES) - 1)] for i in range(len(df))]
+    bars = alt.Chart(df).mark_bar(cornerRadiusEnd=3, height=18).encode(
         y=alt.Y("Category:N", sort="-x", title=None),
         x=alt.X("Spent:Q", title=None, axis=alt.Axis(format="$,.0f")),
-        color=alt.Color("Category:N", scale=alt.Scale(domain=df["Category"].tolist(), range=colors), legend=None),
+        color=alt.Color("Category:N", scale=alt.Scale(domain=df["Category"].tolist(), range=shades), legend=None),
         tooltip=[alt.Tooltip("Category:N"), alt.Tooltip("Spent:Q", format="$,.2f")],
-    ).properties(height=max(180, 40 * len(df)))
-    st.altair_chart(_style(chart), width="stretch")
+    ).properties(height=max(160, 34 * len(df)))
+    st.altair_chart(_style(bars), width="stretch")
 
 
 def daily_chart(daily: pd.DataFrame) -> None:
     df = daily.reset_index()
     df["Date"] = pd.to_datetime(df["Date"])
-    area = alt.Chart(df).mark_area(
-        interpolate="monotone",
-        line={"color": PINK, "strokeWidth": 2.5},
-        color=alt.Gradient(gradient="linear", x1=1, x2=1, y1=1, y2=0,
-                           stops=[alt.GradientStop(color="rgba(139,92,246,0.05)", offset=0),
-                                  alt.GradientStop(color="rgba(236,72,153,0.65)", offset=1)]),
-    ).encode(
-        x=alt.X("Date:T", title=None, axis=alt.Axis(format="%b %d")),
+    bar_px = max(2, min(18, int(560 / max(len(df), 1) * 0.6)))  # thicker bars for shorter ranges
+    bars = alt.Chart(df).mark_bar(color=NOTE, size=bar_px, cornerRadiusTopLeft=2, cornerRadiusTopRight=2).encode(
+        x=alt.X("Date:T", title=None, axis=alt.Axis(format="%b %-d")),
         y=alt.Y("Spent:Q", title=None, axis=alt.Axis(format="$,.0f")),
-        tooltip=[alt.Tooltip("Date:T", format="%a %b %d"), alt.Tooltip("Spent:Q", format="$,.2f")],
-    ).properties(height=220)
-    st.altair_chart(_style(area), width="stretch")
+        tooltip=[alt.Tooltip("Date:T", format="%a %b %-d"), alt.Tooltip("Spent:Q", format="$,.2f")],
+    ).properties(height=200)
+    st.altair_chart(_style(bars), width="stretch")
