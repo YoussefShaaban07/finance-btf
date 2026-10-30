@@ -1,8 +1,11 @@
 """Alerts, Cards, and Subscriptions tabs: short, read-only views."""
 from __future__ import annotations
 
+from datetime import date
+
 import streamlit as st
 
+from app.services.payoff import PayoffPlan, compare
 from dashboard import theme
 from dashboard.context import DashboardContext
 from dashboard.format import money, pretty
@@ -31,6 +34,54 @@ def render_cards(ctx: DashboardContext) -> None:
     for i, card in enumerate(ctx.cards):
         with cols[i % len(cols)]:
             theme.credit_card(card, i, money)
+    render_payoff_plan(ctx)
+
+
+def _md(text: str) -> str:
+    """Streamlit markdown reads $...$ as a math formula, which garbles two dollar amounts in one line."""
+    return text.replace("$", "\\$")
+
+
+def _months_from_now(months: int) -> date:
+    m = date.today().month - 1 + months
+    return date(date.today().year + m // 12, m % 12 + 1, 1)
+
+
+def _plan_summary(plan: PayoffPlan, title: str, blurb: str, recommended: bool) -> None:
+    with st.container(border=True):
+        st.markdown(f"**{title}**" + (" (lower interest)" if recommended else ""))
+        st.caption(blurb)
+        if not plan.feasible:
+            st.markdown("Never pays off at this payment.")
+            return
+        theme.figures([(f"{plan.months} months", f"debt-free by {_months_from_now(plan.months):%B %Y}"),
+                       (money(plan.total_interest), "total interest")])
+        st.caption("Order: " + ", then ".join(f"{p.name} (month {p.month})" for p in plan.order))
+
+
+def render_payoff_plan(ctx: DashboardContext) -> None:
+    st.subheader("Payoff plan")
+    extra = st.number_input("Extra to put toward cards each month ($)", min_value=0.0, max_value=10_000.0,
+                            value=100.0, step=25.0, help="On top of every card's minimum payment.")
+    result = compare(ctx.cards, extra)
+    if result is None:
+        st.success("No card balances to pay off.")
+        return
+
+    st.caption(_md(f"Paying {money(result.avalanche.monthly_payment)} a month in total: all minimums plus "
+                   f"{money(extra)} extra."))
+    av_cheaper = result.interest_saved_by_avalanche >= 1
+    left, right = st.columns(2, gap="medium")
+    with left:
+        _plan_summary(result.avalanche, "Avalanche", "Extra money goes to the highest APR first.", av_cheaper)
+    with right:
+        _plan_summary(result.snowball, "Snowball", "Extra money goes to the smallest balance first.", False)
+
+    st.markdown(_md(result.recommendation))
+    if result.avalanche.feasible:
+        theme.payoff_chart({"Avalanche": result.avalanche.balance_by_card,
+                            "Snowball": result.snowball.balance_by_card})
+    st.caption(_md(" ".join(result.assumptions) + " Educational estimate, not financial advice."))
 
 
 def render_subscriptions(ctx: DashboardContext) -> None:

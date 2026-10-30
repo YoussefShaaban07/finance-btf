@@ -336,3 +336,26 @@ def daily_chart(daily: pd.DataFrame) -> None:
         tooltip=[alt.Tooltip("Date:T", format="%a %b %-d"), alt.Tooltip("Spent:Q", format="$,.2f")],
     ).properties(height=200)
     st.altair_chart(_style(bars), width="stretch")
+
+
+CARD_LINE_COLORS = [NOTE, BRASS, "#3A6FA0", LOSS, "#6B5B95", "#2F8F83"]
+
+
+def payoff_chart(plans: dict[str, dict[str, list[float]]]) -> None:
+    """One panel per strategy, one line per card, so you can see which card hits $0 first under each plan."""
+    rows = [{"Plan": plan, "Card": card, "Month": m, "Owed": v}
+            for plan, cards in plans.items() for card, values in cards.items() for m, v in enumerate(values)]
+    df = pd.DataFrame(rows)
+    cards = list(dict.fromkeys(df["Card"]))
+    lines = alt.Chart(df).mark_line(strokeWidth=2.5).encode(
+        x=alt.X("Month:Q", title="Months from now", axis=alt.Axis(tickMinStep=1, format="d")),
+        y=alt.Y("Owed:Q", title=None, axis=alt.Axis(format="$,.0f")),
+        color=alt.Color("Card:N", scale=alt.Scale(domain=cards, range=CARD_LINE_COLORS[:len(cards)] or [NOTE]),
+                        legend=alt.Legend(title=None, orient="top")),
+        tooltip=[alt.Tooltip("Plan:N"), alt.Tooltip("Card:N"), alt.Tooltip("Month:Q"),
+                 alt.Tooltip("Owed:Q", format="$,.2f")],
+    ).properties(height=210, width=360).facet(
+        column=alt.Column("Plan:N", title=None, sort=list(plans),
+                          header=alt.Header(labelFontSize=14, labelFontWeight=600, labelColor=INK, labelFont=FONT_STACK)),
+    )
+    st.altair_chart(_style(lines), width="stretch")

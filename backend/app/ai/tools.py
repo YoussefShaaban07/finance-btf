@@ -6,7 +6,7 @@ from collections.abc import Callable
 from typing import Any
 
 from app.providers.base import FinanceProvider
-from app.services import market
+from app.services import market, payoff
 from app.services.alerts import card_alerts, unusual_charges
 from app.services.finance import compute_net_worth, spending_summary
 from app.services.subscriptions import find_subscriptions
@@ -83,6 +83,17 @@ TOOL_SCHEMAS = [
         "input_schema": {"type": "object", "properties": {}},
     },
     {
+        "name": "get_payoff_plan",
+        "description": "Credit card payoff plan comparing avalanche (highest APR first) vs snowball (smallest balance "
+                       "first): months to debt-free, total interest, and payoff order. Use for 'which card should I pay "
+                       "off first' or 'how long until I'm debt-free'.",
+        "input_schema": {
+            "type": "object",
+            "properties": {"extra_per_month": {"type": "number", "minimum": 0, "maximum": 10000,
+                                               "description": "Extra dollars per month on top of all minimums, default 0"}},
+        },
+    },
+    {
         "name": "get_market_news",
         "description": "Latest general market news headlines.",
         "input_schema": {"type": "object", "properties": {"limit": {"type": "integer", "minimum": 1, "maximum": 10}}},
@@ -154,6 +165,15 @@ def _savings_goals(_args: ToolArgs, _p: FinanceProvider, goals_fn: GoalsFn | Non
     return goals or {"message": "The user hasn't set any savings goals yet."}
 
 
+def _payoff_plan(args: ToolArgs, p: FinanceProvider, _goals: GoalsFn | None) -> Any:
+    result = payoff.compare(p.get_credit_cards(), float(args.get("extra_per_month", 0)))
+    if result is None:
+        return {"message": "No credit card balances to pay off."}
+    chart_only = {"balance_by_month", "balance_by_card"}
+    summary = result.model_dump(exclude={"avalanche": chart_only, "snowball": chart_only})
+    return summary  # month-by-month balances are for the chart, not the model
+
+
 def _market_news(args: ToolArgs, _p: FinanceProvider, _goals: GoalsFn | None) -> Any:
     return [n.model_dump() for n in market.get_news(_int(args, "limit", 5))]
 
@@ -169,6 +189,7 @@ HANDLERS: dict[str, ToolHandler] = {
     "get_subscriptions": _subscriptions,
     "get_alerts": _alerts,
     "get_savings_goals": _savings_goals,
+    "get_payoff_plan": _payoff_plan,
     "get_market_news": _market_news,
 }
 
