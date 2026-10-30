@@ -30,10 +30,15 @@ def _load_streamlit_secrets() -> None:
 
 def _load_dotenv() -> None:
     try:
-        from dotenv import load_dotenv
+        from dotenv import dotenv_values
     except ImportError:
         return
-    load_dotenv(ROOT / ".env", override=False)  # never overrides values already set above
+    # Fill in anything still missing OR EMPTY. Streamlit copies every root-level secrets.toml entry into the
+    # environment, including the template's blank `PLAID_SECRET = ""` lines, and a plain load_dotenv() would
+    # treat those blanks as "already set" and silently ignore the real keys in .env.
+    for key, value in dotenv_values(ROOT / ".env", encoding="utf-8-sig").items():  # -sig: tolerate a Notepad BOM
+        if value and not os.environ.get(key):
+            os.environ[key] = value
 
 
 def load_secrets() -> None:

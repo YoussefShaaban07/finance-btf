@@ -74,3 +74,18 @@ def test_dashboard_reads_keys_from_dotenv(monkeypatch, tmp_path):
     setup.load_secrets()
     assert os.environ["PLAID_CLIENT_ID"] == "from-dotenv"
     assert os.environ["GEMINI_API_KEY"] == "already-set"
+
+
+def test_dotenv_fills_blanks_left_by_secrets_template(monkeypatch, tmp_path):
+    """Streamlit exports secrets.toml's blank `PLAID_SECRET = ""` lines as empty env vars; .env must still win."""
+    from dashboard import setup
+
+    (tmp_path / ".env").write_text("﻿PLAID_CLIENT_ID=id-from-dotenv\nPLAID_SECRET=secret-from-dotenv\n",
+                                   encoding="utf-8")  # with a BOM, the way some editors save
+    monkeypatch.setattr(setup, "ROOT", tmp_path)
+    monkeypatch.setattr(setup, "_load_streamlit_secrets", lambda: None)
+    env = dict(os.environ, PLAID_CLIENT_ID="", PLAID_SECRET="")
+    monkeypatch.setattr(os, "environ", env)
+    setup.load_secrets()
+    assert os.environ["PLAID_CLIENT_ID"] == "id-from-dotenv"
+    assert os.environ["PLAID_SECRET"] == "secret-from-dotenv"
