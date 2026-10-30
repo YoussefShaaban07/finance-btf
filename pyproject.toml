@@ -28,7 +28,7 @@ ignore = ["RUF001", "RUF002", "RUF003"]  # allow typographic characters (âˆ’, â€
 extend-immutable-calls = ["fastapi.Depends", "fastapi.Query", "fastapi.Header", "fastapi.Body"]
 
 [tool.ruff.lint.isort]
-known-first-party = ["app", "dashboard"]
+known-first-party = ["app", "dashboard", "event2"]
 
 # ------------------------------------------------------------------ tests: `pytest`
 [tool.pytest.ini_options]

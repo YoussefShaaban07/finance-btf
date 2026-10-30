@@ -1,0 +1,142 @@
+date,merchant,category,amount
+2026-10-30,Waffle House,Dining,12.46
+2026-10-29,Starbucks,Coffee,6.04
+2026-10-29,Taco Bell,Dining,12.41
+2026-10-29,Steam,Entertainment,16.12
+2026-10-28,Publix,Groceries,31.77
+2026-10-27,Cash App Pay - Food Truck,Dining,10.14
+2026-10-27,ElectroMart,Shopping,489.99
+2026-10-26,Starbucks,Coffee,7.33
+2026-10-25,Aldi,Groceries,69.45
+2026-10-25,Taco Bell,Dining,13.4
+2026-10-24,Bean There Cafe,Coffee,5.67
+2026-10-24,Panda Express,Dining,12.25
+2026-10-24,The Capital Grille,Dining,186.4
+2026-10-23,Campus Job Payroll,Income,-980.0
+2026-10-22,Starbucks,Coffee,6.93
+2026-10-22,Shell,Transport,28.68
+2026-10-21,Aldi,Groceries,75.45
+2026-10-20,iCloud+,Subscriptions,2.99
+2026-10-19,Starbucks,Coffee,4.79
+2026-10-19,CVS,Personal,12.27
+2026-10-18,Uber,Transport,11.83
+2026-10-17,Starbucks,Coffee,5.19
+2026-10-16,Bean There Cafe,Coffee,5.81
+2026-10-16,Uber,Transport,20.16
+2026-10-15,Georgia Power,Housing,63.15
+2026-10-15,Bean There Cafe,Coffee,4.5
+2026-10-15,Taco Bell,Dining,12.28
+2026-10-15,Shell,Transport,17.02
+2026-10-14,Publix,Groceries,85.47
+2026-10-14,Starbucks,Coffee,4.47
+2026-10-14,Amazon,Shopping,49.86
+2026-10-13,Chipotle,Dining,9.01
+2026-10-12,Netflix,Subscriptions,15.49
+2026-10-12,Bean There Cafe,Coffee,5.01
+2026-10-12,Uber,Transport,41.52
+2026-10-10,Shell,Transport,25.59
+2026-10-09,Campus Job Payroll,Income,-980.0
+2026-10-09,Starbucks,Coffee,6.65
+2026-10-09,Waffle House,Dining,19.58
+2026-10-09,Shell,Transport,30.69
+2026-10-08,Planet Fitness,Subscriptions,24.99
+2026-10-08,Bean There Cafe,Coffee,4.71
+2026-10-08,Great Clips,Personal,13.03
+2026-10-07,Kroger,Groceries,86.55
+2026-10-07,Bean There Cafe,Coffee,7.21
+2026-10-07,CVS,Personal,25.04
+2026-10-06,Waffle House,Dining,13.45
+2026-10-05,Spotify,Subscriptions,11.99
+2026-10-05,Target,Shopping,17.87
+2026-10-04,Aldi,Groceries,74.4
+2026-10-04,Waffle House,Dining,18.91
+2026-10-02,Transfer to Savings,Transfer,150.0
+2026-10-02,Transfer from Checking,Transfer,-150.0
+2026-10-01,Maple Court Apartments,Housing,725.0
+2026-10-01,Target,Shopping,65.86
+2026-09-30,Aldi,Groceries,32.57
+2026-09-29,Starbucks,Coffee,5.66
+2026-09-29,Panda Express,Dining,15.02
+2026-09-29,Cash App Pay - Food Truck,Dining,13.39
+2026-09-28,Bean There Cafe,Coffee,4.39
+2026-09-27,Bean There Cafe,Coffee,4.26
+2026-09-26,Bean There Cafe,Coffee,6.46
+2026-09-26,Shell,Transport,31.01
+2026-09-25,Campus Job Payroll,Income,-980.0
+2026-09-24,Bean There Cafe,Coffee,7.04
+2026-09-22,Starbucks,Coffee,7.11
+2026-09-22,Waffle House,Dining,27.68
+2026-09-21,Amazon,Shopping,73.02
+2026-09-20,iCloud+,Subscriptions,2.99
+2026-09-20,Kroger,Groceries,64.02
+2026-09-20,Taco Bell,Dining,21.35
+2026-09-18,Bean There Cafe,Coffee,6.97
+2026-09-17,Starbucks,Coffee,4.74
+2026-09-17,Waffle House,Dining,22.13
+2026-09-17,Shell,Transport,26.91
+2026-09-16,Aldi,Groceries,51.63
+2026-09-16,Bean There Cafe,Coffee,6.92
+2026-09-15,Georgia Power,Housing,53.29
+2026-09-15,Bean There Cafe,Coffee,4.35
+2026-09-14,Chipotle,Dining,9.68
+2026-09-13,Publix,Groceries,44.48
+2026-09-12,Netflix,Subscriptions,15.49
+2026-09-12,Starbucks,Coffee,6.93
+2026-09-12,Uber,Transport,16.87
+2026-09-11,Campus Job Payroll,Income,-980.0
+2026-09-11,Starbucks,Coffee,6.4
+2026-09-09,Bean There Cafe,Coffee,7.27
+2026-09-09,Uber,Transport,20.46
+2026-09-08,Planet Fitness,Subscriptions,24.99
+2026-09-08,Shell,Transport,32.34
+2026-09-06,Starbucks,Coffee,6.91
+2026-09-05,Spotify,Subscriptions,11.99
+2026-09-05,Bean There Cafe,Coffee,5.24
+2026-09-04,Starbucks,Coffee,6.7
+2026-09-03,Bean There Cafe,Coffee,5.93
+2026-09-02,Transfer to Savings,Transfer,150.0
+2026-09-02,Transfer from Checking,Transfer,-150.0
+2026-09-02,Aldi,Groceries,38.48
+2026-09-02,Starbucks,Coffee,4.93
+2026-09-01,Maple Court Apartments,Housing,725.0
+2026-09-01,Waffle House,Dining,14.05
+2026-09-01,Amazon,Shopping,50.97
+2026-08-31,Cash App Pay - Food Truck,Dining,13.71
+2026-08-30,Publix,Groceries,59.42
+2026-08-30,Shell,Transport,11.81
+2026-08-28,Campus Job Payroll,Income,-980.0
+2026-08-28,Chipotle,Dining,26.95
+2026-08-27,Bean There Cafe,Coffee,5.85
+2026-08-26,Aldi,Groceries,66.29
+2026-08-26,Waffle House,Dining,20.95
+2026-08-25,Target,Shopping,60.48
+2026-08-24,Bean There Cafe,Coffee,6.86
+2026-08-24,Uber,Transport,41.99
+2026-08-23,Publix,Groceries,37.7
+2026-08-23,Target,Shopping,36.67
+2026-08-22,Chipotle,Dining,17.1
+2026-08-20,iCloud+,Subscriptions,2.99
+2026-08-19,Aldi,Groceries,36.09
+2026-08-19,Shell,Transport,40.25
+2026-08-17,Shell,Transport,34.5
+2026-08-16,Aldi,Groceries,65.59
+2026-08-15,Georgia Power,Housing,70.39
+2026-08-14,Campus Job Payroll,Income,-980.0
+2026-08-13,Panda Express,Dining,25.39
+2026-08-12,Netflix,Subscriptions,15.49
+2026-08-12,Kroger,Groceries,57.86
+2026-08-11,Bean There Cafe,Coffee,7.35
+2026-08-11,Waffle House,Dining,20.62
+2026-08-09,Publix,Groceries,35.19
+2026-08-08,Planet Fitness,Subscriptions,24.99
+2026-08-08,Starbucks,Coffee,5.07
+2026-08-07,Panda Express,Dining,20.78
+2026-08-06,Panda Express,Dining,19.5
+2026-08-05,Spotify,Subscriptions,11.99
+2026-08-05,Aldi,Groceries,77.16
+2026-08-04,Starbucks,Coffee,6.48
+2026-08-03,Bean There Cafe,Coffee,6.9
+2026-08-03,Panda Express,Dining,18.62
+2026-08-02,Transfer to Savings,Transfer,150.0
+2026-08-02,Transfer from Checking,Transfer,-150.0
+2026-08-02,Uber,Transport,33.89

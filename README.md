@@ -145,6 +145,40 @@ In Codespaces, add them as **Codespaces secrets** instead (repo Settings → Sec
 
 ⚠️ **Never commit `secrets.toml` or paste keys into code.** It's already in `.gitignore`.
 
+## Event 2: Plug It In (Plaid Sandbox)
+
+SpendWise includes the [Event 2 kit](https://github.com/UnknownHacker1/event2-kit)'s `bank.py` and CSV backup (in `event2/`), shown in the **Bank feed** tab with both Silver Quest charts on.
+
+**1. Add your Sandbox keys.** Get them at [dashboard.plaid.com](https://dashboard.plaid.com) → Developers → Keys (use the **Sandbox** secret). Either put them in `.streamlit/secrets.toml` (see above) or use the kit's `.env` format:
+
+Windows:
+```
+copy .env.example .env
+```
+```
+notepad .env
+```
+Mac / Linux: `cp .env.example .env` then `open -e .env`
+
+Paste each value after its `=` sign, no quotes or spaces. Also fill in `TOKEN_ENCRYPTION_KEY` (the command is in the file) so the sidebar's bank connection can store its token encrypted.
+
+**2. Check the keys can't leak.** Run `git status`. `.env` must **not** be in the list. (It's in `.gitignore`.)
+
+**3. Run it** (`py -m streamlit run app.py`) and connect:
+- **Bank feed** tab → **Load bank feed**. It should say *Data source: Plaid Sandbox*. A fresh sandbox bank takes up to 30 seconds to fill with transactions.
+- Sidebar → **Connect sandbox bank** switches the whole dashboard (and Penny) from sample data to First Platypus Bank.
+
+**Bonus quests**
+- **Silver:** done. The spending-by-category and spending-per-month charts are on in the Bank feed tab.
+- **Gold:** rotate your key. In the Plaid dashboard, make a new Sandbox secret, paste it into `.env` (or `secrets.toml`), stop the app with Ctrl+C, start it again, and press **Reload** in the Bank feed tab to prove it still connects.
+
+| You see | Fix |
+|---|---|
+| `Plaid said: INVALID_API_KEYS` | Use the Sandbox secret, not Production. No spaces or quotes in `.env`. |
+| `Plaid said: INVALID_FIELD` | Your client ID is wrong. Copy it again. |
+| Still says *CSV backup (no keys in .env yet)* | Stop the app with Ctrl+C and start it again; keys are read at startup. |
+| Sidebar says to add `TOKEN_ENCRYPTION_KEY` | Generate one with the command in `.env.example` and paste it in. |
+
 ## How the AI works
 Penny gets **tools**, not a pile of data in her prompt. For "Can I afford a $1,200 laptop?" she calls `get_accounts` and `get_spending_summary`, then does the math. Every tool is read-only, so she *can't* move money even if tricked.
 
@@ -158,13 +192,14 @@ app.py                 ← entry point: wires the sidebar, header and tabs toget
 dashboard/
   data.py              ← fetches and caches account data
   context.py           ← computes every number the screen and the AI share (net worth, alerts, goals…)
-  views/               ← one module per tab: overview, alerts/cards/subscriptions, goals, stocks, assistant
+  views/               ← one module per tab: overview, alerts/cards/subscriptions, goals, stocks, bank feed, assistant
   theme.py             ← design tokens, CSS and HTML components (all data text is HTML-escaped)
 backend/app/
   providers/           ← DemoProvider | PlaidProvider (same interface)
   services/            ← net worth, spending, alerts, subscriptions, goals, market data, Plaid linking
   ai/                  ← assistant rules, tool registry, tool-use loop
   main.py              ← optional REST API (FastAPI) for the mobile app
+event2/                ← Event 2 kit: bank.py (3 Plaid calls) + CSV backup
 backend/tests/, tests/ ← unit tests
 evals/                 ← AI assistant evals
 mobile/                ← optional Expo phone app (talks to the REST API)
