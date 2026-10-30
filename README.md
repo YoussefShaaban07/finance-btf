@@ -51,18 +51,39 @@ git clone https://github.com/YoussefShaaban07/finance-btf.git
 cd finance-btf
 ```
 
-**2. Install** (run one line at a time)
+> ⚠️ **Type or paste ONE line at a time and press Enter after each.** Pasting several lines at once can glue them together (e.g. `cd finance-btfpy -m pip ...`), which causes `The system cannot find the path specified` or `Could not open requirements file: 'requirements.txtcd'`.
+
+**2. Create a virtual environment** (recommended, keeps the packages inside this project)
 
 Windows (Command Prompt):
 ```
-py -m pip install -r requirements.txt
+py -m venv .venv
+```
+```
+.venv\Scripts\activate
 ```
 Mac / Linux (Terminal):
 ```
+python3 -m venv .venv
+```
+```
+source .venv/bin/activate
+```
+You should now see `(.venv)` at the start of your prompt. Every time you open a new terminal, `cd finance-btf` and run the activate line again before starting the app.
+
+**3. Install**
+
+Windows:
+```
+py -m pip install -r requirements.txt
+```
+Mac / Linux:
+```
 python3 -m pip install -r requirements.txt
 ```
+A `[notice] A new release of pip is available` message is harmless; ignore it.
 
-**3. Run**
+**4. Run**
 
 Windows:
 ```
@@ -75,7 +96,18 @@ python3 -m streamlit run app.py
 
 Your browser opens at http://localhost:8501. It works right away with demo data. Press **Ctrl+C** in the terminal to stop it.
 
-> **Troubleshooting:** `py is not recognized` → use `python` instead. `pip`/`streamlit is not recognized` → always use the `-m` form shown above. First run asks for an email → just press Enter.
+#### Troubleshooting
+
+| Problem | Fix |
+|---|---|
+| `The system cannot find the path specified` | Two commands got pasted onto one line. Run `cd finance-btf` by itself, then the next command on its own line. |
+| `Could not open requirements file: ... 'requirements.txtcd'` | Same thing: a pasted line got glued on. Run `py -m pip install -r requirements.txt` alone. |
+| `py is not recognized` | Use `python` instead of `py`. |
+| `pip` / `streamlit is not recognized` | Always use the `-m` form shown above (`py -m pip ...`, `py -m streamlit ...`). |
+| `.venv\Scripts\activate` is blocked in PowerShell | Use Command Prompt instead, or run `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned` once. |
+| A package fails to build during install | You may be on a very new Python (e.g. 3.14). Install Python 3.12, then delete `.venv` and recreate it with `py -3.12 -m venv .venv`. |
+| `ModuleNotFoundError` when running the app | The venv isn't active. Run the activate line again (you should see `(.venv)`). |
+| First run asks for an email | Just press Enter. |
 
 ### Option B: GitHub Codespaces (nothing to install)
 See **🚀 Quick start** at the top of this page.
