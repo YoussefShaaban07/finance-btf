@@ -33,11 +33,11 @@ Built for the FinTech Club Innovation Series. **All data is fake** (demo data or
 |---|---|---|
 | 📊 | Net worth, assets, debts, cash flow; spending by category + by day; searchable transactions | 1: Vibe Check |
 | 🏦 | One-click **Plaid Sandbox** bank connection (balances, cards, investments, transactions) | 2: Plug It In |
-| 🤖 | **Ask AI**: assistant with 11 read-only tools, so it looks things up instead of guessing | 3: Talk to Your Wallet |
+| 🤖 | **Ask AI**: assistant with 12 read-only tools, so it looks things up instead of guessing | 3: Talk to Your Wallet |
 | 🔔 | Alerts: unusual charges, card payments due soon, high utilization | 3 |
 | 🔁 | Automatic subscription detection with yearly cost | 3 |
 | 🎯 | Savings goals with "on track / behind" | 3 |
-| 💳 | Credit cards: utilization, APR, estimated monthly interest, due dates | 1–2 |
+| 💳 | Credit cards: utilization, APR, estimated monthly interest, due dates, and a **debt payoff planner** (avalanche vs. snowball) | 1–2 |
 | 📈 | Portfolio + live stock watchlist | 2 |
 | 🔒 | Encrypted bank tokens, no secrets in code, prompt-injection defense, AI evals: see [SECURITY.md](SECURITY.md) | 4: Lock It Down |
 | 🎤 | 3-minute demo script: see [DEMO.md](DEMO.md) | 5: Demo Night |
@@ -182,7 +182,7 @@ Paste each value after its `=` sign, no quotes or spaces. Also fill in `TOKEN_EN
 ## How the AI works
 Penny gets **tools**, not a pile of data in her prompt. For "Can I afford a $1,200 laptop?" she calls `get_accounts` and `get_spending_summary`, then does the math. Every tool is read-only, so she *can't* move money even if tricked.
 
-Tools: `get_net_worth`, `get_accounts`, `get_credit_cards`, `get_spending_summary`, `get_recent_transactions`, `get_holdings`, `get_subscriptions`, `get_alerts`, `get_savings_goals`, `get_stock_quote`, `get_market_news`.
+Tools: `get_net_worth`, `get_accounts`, `get_credit_cards`, `get_spending_summary`, `get_recent_transactions`, `get_holdings`, `get_subscriptions`, `get_alerts`, `get_savings_goals`, `get_stock_quote`, `get_market_news`, `get_payoff_plan`.
 
 Her rules are in `backend/app/ai/chat.py`. Works with **Gemini or Claude**: same tools, same rules. **Test her** with `py evals/run_evals.py` (Mac: `python3 ...`) (needs an AI key). It runs 9 graded cases, including refusing to move money and ignoring a prompt-injection attack hidden in a merchant name.
 
